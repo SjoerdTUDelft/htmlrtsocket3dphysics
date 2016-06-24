@@ -1,0 +1,1150 @@
+<!doctype html>
+<html>
+<head>
+  <link rel="apple-touch-icon" sizes="57x57" href="/favicons/apple-touch-icon-57x57.png">
+  <link rel="apple-touch-icon" sizes="60x60" href="/favicons/apple-touch-icon-60x60.png">
+  <link rel="apple-touch-icon" sizes="72x72" href="/favicons/apple-touch-icon-72x72.png">
+  <link rel="apple-touch-icon" sizes="76x76" href="/favicons/apple-touch-icon-76x76.png">
+  <link rel="apple-touch-icon" sizes="114x114" href="/favicons/apple-touch-icon-114x114.png">
+  <link rel="apple-touch-icon" sizes="120x120" href="/favicons/apple-touch-icon-120x120.png">
+  <link rel="apple-touch-icon" sizes="144x144" href="/favicons/apple-touch-icon-144x144.png">
+  <link rel="apple-touch-icon" sizes="152x152" href="/favicons/apple-touch-icon-152x152.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/favicons/apple-touch-icon-180x180.png">
+  <link rel="icon" type="image/png" href="/favicons/favicon-32x32.png" sizes="32x32">
+  <link rel="icon" type="image/png" href="/favicons/android-chrome-192x192.png" sizes="192x192">
+  <link rel="icon" type="image/png" href="/favicons/favicon-96x96.png" sizes="96x96">
+  <link rel="icon" type="image/png" href="/favicons/favicon-16x16.png" sizes="16x16">
+  <link rel="manifest" href="/favicons/manifest.json">
+  <link rel="mask-icon" href="/favicons/safari-pinned-tab.svg" color="#5bbad5">
+  <link rel="shortcut icon" href="/favicons/favicon.ico">
+  <meta name="msapplication-TileColor" content="#da532c">
+  <meta name="msapplication-TileImage" content="/favicons/mstile-144x144.png">
+  <meta name="msapplication-config" content="/favicons/browserconfig.xml">
+  <meta name="theme-color" content="#ffffff">
+  <script src ="js/three.js"></script>
+  <script src ="js/Actor.js"></script>
+  <script src ="js/Stats.js"></script>
+  <script src ="js/QuadTree.js"></script>
+  <script src ="js/Gameplay/Character.js"></script>
+  <script src ="js/Controls/ThirdPersonControls.js"></script>
+  <script src ="js/Controls/FreeLookControls.js"></script>
+  <script src ="js/Controls/StrategicControls.js"></script>
+  <script src ="js/Physics/PhysicsSystem.js"></script>
+  <script src ="js/Physics/Object.js"></script>
+  <script src ="js/Physics/Sphere.js"></script>
+  <script src ="js/Physics/Capsule.js"></script>
+  <script src ="js/Physics/Dimension.js"></script>
+  <script src ="js/Physics/String.js"></script>
+  <script src ="js/Physics/Box.js"></script>
+  <script src ="js/Physics/Contact.js"></script>		
+  <script src ="js/loaders/OBJLoader.js"></script>
+  <script src ="js/Math/Matrix3ext.js"></script>
+  <script type="text/javascript" src="js/dat.gui.min.js"></script>
+  <script type="text/javascript" src="/socket.io/socket.io.js"></script>
+  <script src="http://code.jquery.com/jquery-1.11.1.js"></script>
+  <title>TESTESTEST</title>
+  <style>
+    canvas { width: 100%; height: 100% }
+    body {margin: 0;  }
+  </style>
+</head>
+
+<body></body>
+
+<script id="vertexShader" type="x-shader/x-vertex">
+
+	varying vec2 vUv;
+	varying vec3 vNormal;
+	varying vec3 pos;
+	varying vec4 vWorldPos;
+
+	uniform float refractionRatio;
+
+
+	void main() {
+
+		
+		vWorldPos =  modelMatrix* vec4(position,1.0);
+
+		vNormal = normalMatrix * normal;
+
+
+		vec4 tpos = modelViewMatrix * vec4(position,1.0);
+		pos = vec3(tpos.xyz)/tpos.w;
+
+		vUv = uv;
+		
+		gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+	}
+</script>
+<script id="fragmentShader" type="x-shader/x-fragment">
+
+	//uniform vec2 resolution;
+	//uniform float time;
+	uniform float refr;
+	varying vec2 vUv;
+	uniform float roughness;
+	uniform float size;
+	uniform sampler2D diffuse;
+	uniform sampler2D envMap;
+	varying vec3 vNormal;
+	varying vec4 vWorldPos;
+	varying vec3 pos;
+
+	#define M_PI 3.1415926535897932384626433832795
+	/*
+
+		#define M_PI 3.1415926535897932384626433832795
+		float saturate(float x)
+		{
+		  return max(0.0, min(1.0, x));
+		}
+
+		vec2 Hammersley( int Index, int NumSamples, int[1] Random )
+		{
+			float E1 = frac( (float)Index / NumSamples + float( Random.x & 0xffff ) / (1<<16) );
+			float E2 = float( bitfieldReverse(Index) ^ Random.y ) * 2.3283064365386963e-10;
+			return vec2( E1, E2 );
+		}
+
+		vec3 TangentToWorld(vec3 Vec, vec3 TangentZ) {
+			vec3 UpVector = abs(TangentZ.z) < 0.999 ? float3(0,0,1) : float3(1,0,0);
+			vec3 TangentX = normalize( cross( UpVector, TangentZ ) );
+			vec3 TangentY = cross( TangentZ, TangentX );
+			return TangentX * Vec.x + TangentY * Vec.y + TangentZ * Vec.z;
+		}
+
+		vec3 ImportanceSampleGGX( vec2 E, float Roughness )
+		{
+			float m = Roughness * Roughness;
+			float m2 = m * m;
+
+			float Phi = 2 * PI * E.x;
+			float CosTheta = sqrt( (1 - E.y) / ( 1 + (m2 - 1) * E.y ) );
+			float SinTheta = sqrt( 1 - CosTheta * CosTheta );
+
+			float3 H;
+			H.x = SinTheta * cos( Phi );
+			H.y = SinTheta * sin( Phi );
+			H.z = CosTheta;
+			
+			float d = ( CosTheta * m2 - CosTheta ) * CosTheta + 1;
+			float D = m2 / ( PI*d*d );
+			float PDF = D * CosTheta;
+
+			return vec4( H, PDF );
+		}
+
+		vec3 PrefilterEnvMap(int[1] Random, float Roughness, vec3 R) {
+
+			float TotalWeight;
+			vec3 PrefilteredColor = 0;
+
+			const int NumSamples = 64;
+
+			for( int i = 0; i < NumSamples; i++ ) {
+				float2 E = Hammersley( i, NumSamples,Random );
+				float3 H = TangentToWorld(ImportanceSampleGGX( E, Roughness).xyz,R);
+				float3 L = 2 * dot( R, H ) * H - R;
+
+				float NoL = saturate( dot( R, L ) );
+				if( NoL > 0 )	{
+					PrefilteredColor += EnvMap.SampleLevel( EnvMapSampler , L, 0 ).rgb * NoL;
+					TotalWeight += NoL;
+				}
+			}
+			
+			return PrefilteredColor / max(TotalWeight,0.001);
+		}
+
+		float Vis_SmithJointApprox( float Roughness, float NoV, float NoL )
+		{
+			float a = Square( Roughness );
+			float Vis_SmithV = NoL * ( NoV * ( 1 - a ) + a );
+			float Vis_SmithL = NoV * ( NoL * ( 1 - a ) + a );
+			return 0.5 * 1/( Vis_SmithV + Vis_SmithL );
+		}
+
+		float4 CosineSampleHemisphere( float2 E )
+		{
+			float Phi = 2 * M_PI * E.x;
+			float CosTheta = sqrt( E.y );
+			float SinTheta = sqrt( 1 - CosTheta * CosTheta );
+
+			vec3 H;
+			H.x = SinTheta * cos( Phi );
+			H.y = SinTheta * sin( Phi );
+			H.z = CosTheta;
+
+			float PDF = CosTheta / PI;
+
+			return vec4( H, PDF );
+		}
+
+		vec3 IntegrateBRDF( int[1] Random, float Roughness, float NoV )
+		{
+			vec3 V;
+			V.x = sqrt( 1.0f - NoV * NoV );	// sin
+			V.y = 0;
+			V.z = NoV;						// cos
+
+			float A = 0;
+			float B = 0;
+			float C = 0;
+
+			const uint NumSamples = 64;
+			for( uint i = 0; i < NumSamples; i++ )
+			{
+				vec2 E = Hammersley( i, NumSamples, Random );
+
+				{
+					vec3 H = ImportanceSampleGGX( E, Roughness ).xyz;
+					vec3 L = 2 * dot( V, H ) * H - V;
+
+					float NoL = saturate( L.z );
+					float NoH = saturate( H.z );
+					float VoH = saturate( dot( V, H ) );
+
+					if( NoL > 0 )
+					{
+						float Vis = Vis_SmithJointApprox( Roughness, NoV, NoL );
+
+						float a = Square( Roughness );
+						float a2 = a*a;
+						float NoL_Vis_PDF = NoL * Vis * (4.0 * VoH / NoH);
+
+						float Fc = pow( 1 - VoH, 5.0 );
+						A += (1 - Fc) * NoL_Vis_PDF;
+						B += Fc * NoL_Vis_PDF;
+					}
+				}
+
+				{
+					float3 L = CosineSampleHemisphere( E ).xyz;
+					float3 H = normalize(V + L);
+
+					float NoL = saturate( L.z );
+					float NoH = saturate( H.z );
+					float VoH = saturate( dot( V, H ) );
+
+					float FD90 = ( 0.5 + 2 * VoH * VoH ) * Roughness;
+					float FdV = 1 + (FD90 - 1) * pow( 1 - NoV, 5 );
+					float FdL = 1 + (FD90 - 1) * pow( 1 - NoL, 5 );
+					C += FdV * FdL * ( 1 - 0.3333 * Roughness );
+				}
+			}
+
+			return float3( A, B, C ) / NumSamples;
+		}
+
+		vec3 ApproximateSpecularIBL( int[1] Random, vec3 SpecularColor, float Roughness, vec3 N, vec3 V )
+		{
+
+			vec3 R = 2 * dot( V, N ) * N - V;
+			vec3 PrefilteredColor = PrefilterEnvMap( Random, Roughness, R );
+	 
+			float NoV = saturate( dot( N, V ) );
+			float2 AB = IntegrateBRDF( Random, Roughness, NoV );
+
+			return PrefilteredColor * ( SpecularColor * AB.x + AB.y );
+		}
+
+		FScreenSpaceData GetScreenSpaceData(float2 UV, bool bGetNormalizedNormal = true)
+		{
+			FScreenSpaceData Out;
+
+			Out.GBuffer = GetGBufferData(UV, bGetNormalizedNormal);
+			float4 ScreenSpaceAO = Texture2DSampleLevel(ScreenSpaceAOTexture, ScreenSpaceAOTextureSampler, UV, 0);
+
+			Out.AmbientOcclusion = ScreenSpaceAO.r;
+
+			Out.DirectionalOcclusion = Texture2DSampleLevel( DirectionalOcclusionTexture, DirectionalOcclusionSampler, UV, 0 ).rg;
+			return Out;
+		}
+
+		void main() {
+
+			
+			float2 UV = UVAndScreenPos.xy;
+
+			FScreenSpaceData ScreenSpaceData = GetScreenSpaceData(UV);
+			FGBufferData GBuffer = ScreenSpaceData.GBuffer;
+			float AbsoluteDiffuseMip = AmbientCubemapMipAdjust.z;
+
+			// screen position in [-1, 1] screen space
+			float2 ScreenSpacePos = UVAndScreenPos.zw;
+			int2 PixelPos = (int2)SvPosition.xy;
+
+			float3 ScreenVector = normalize(mul(float4(ScreenSpacePos, 1, 0), View.ScreenToWorld).xyz);
+
+			float3 N = GBuffer.WorldNormal;
+			float3 V = -ScreenVector;
+			float3 R = 2 * dot( V, N ) * N - V;
+
+			//float NoV = max( dot(N, V), 1e-5 );
+			float NoV = saturate( dot(N, V) );
+
+			// Point lobe in off-specular peak direction
+			float a = Square( GBuffer.Roughness );
+			R = lerp( N, R, (1 - a) * ( sqrt(1 - a) + a ) );
+			
+			uint2 Random = ScrambleTEA( PixelPos );
+			Random.x ^= Frame.Random;
+			Random.y ^= Frame.Random;
+
+			float3 NonSpecularContribution = 0;
+			float3 SpecularContribution = 0;
+
+			float3 DiffuseLookup =  TextureCubeSampleLevel(AmbientCubemap, AmbientCubemapSampler, N, AbsoluteDiffuseMip).rgb;
+			NonSpecularContribution += GBuffer.DiffuseColor * DiffuseLookup;
+
+			// Diffuse
+			{
+				// we want to access the mip with the preconvolved diffuse lighting (coneangle=90 degree)
+				//NonSpecularContribution += GBuffer.DiffuseColor * DiffuseLookup;
+			}
+
+			// Specular
+			{
+				float Mip = ComputeCubemapMipFromRoughness( GBuffer.Roughness, AmbientCubemapMipAdjust.w );
+				float3 SampleColor = TextureCubeSampleLevel( AmbientCubemap, AmbientCubemapSampler, R, Mip ).rgb;
+
+		#if USE_CLEARCOAT
+				BRANCH if( GBuffer.ShadingModelID == SHADINGMODELID_CLEAR_COAT )
+				{
+					float ClearCoat = GBuffer.CustomData.x;
+					float2 AB = PreIntegratedGF.SampleLevel( PreIntegratedGFSampler, float2( NoV, GBuffer.Roughness ), 0 ).rg;
+					SpecularContribution += SampleColor * ( GBuffer.SpecularColor * AB.x + AB.y * (1 - ClearCoat) );
+				}
+				else
+		#endif
+				{
+					SpecularContribution += SampleColor * EnvBRDF( GBuffer.SpecularColor, GBuffer.Roughness, NoV );
+					//SpecularContribution += ApproximateSpecularIBL( Random, GBuffer.SpecularColor, GBuffer.Roughness, GBuffer.WorldNormal, -ScreenVector );
+				}
+			}
+
+		#if USE_CLEARCOAT
+			BRANCH if( GBuffer.ShadingModelID == SHADINGMODELID_CLEAR_COAT )
+			{
+				const float ClearCoat			= GBuffer.CustomData.x;
+				const float ClearCoatRoughness	= GBuffer.CustomData.y;
+
+				float Mip = ComputeCubemapMipFromRoughness( ClearCoatRoughness, AmbientCubemapMipAdjust.w );
+				float3 SampleColor = TextureCubeSampleLevel( AmbientCubemap, AmbientCubemapSampler, R, Mip ).rgb;
+
+				// F_Schlick
+				float F0 = 0.04;
+				float Fc = pow( 1 - NoV, 5 );
+				float F = Fc + (1 - Fc) * F0;
+				F *= ClearCoat;
+
+				float LayerAttenuation = (1 - F);
+
+				NonSpecularContribution *= LayerAttenuation;
+				SpecularContribution *= LayerAttenuation;
+				SpecularContribution += SampleColor * F;
+			}
+		#endif
+			
+			BRANCH if( GBuffer.ShadingModelID == SHADINGMODELID_HAIR )
+			{
+				float3 FakeNormal = normalize( V - N * dot(V,N) );
+				FakeNormal = normalize( FakeNormal + 0 * float3(0,0,1) );
+				SpecularContribution = TextureCubeSampleLevel(AmbientCubemap, AmbientCubemapSampler, FakeNormal, AbsoluteDiffuseMip).rgb;
+				SpecularContribution *= PI * HairShading( GBuffer, FakeNormal, V, N, 1, 0, 0.2, Random );
+				NonSpecularContribution = 0;
+			}
+
+		#if IMPORTANCE_SAMPLE
+			if( GBuffer.ShadingModelID > 0 && UV.x > 0.5 )
+			{
+				NonSpecularContribution = 0;
+
+				BRANCH if( GBuffer.ShadingModelID == SHADINGMODELID_HAIR )
+				{
+					SpecularContribution = ImageBasedLightingHair( GBuffer, -ScreenVector, GBuffer.WorldNormal, Random );
+				}
+				else
+				{
+					SpecularContribution = ImageBasedLightingMIS( GBuffer, -ScreenVector, GBuffer.WorldNormal, Random );
+				}
+			}
+		#endif
+
+			// apply darkening from ambient occlusion (does not use PostprocessInput1 to set white texture if SSAO is off)
+			float AmbientOcclusion = GBuffer.GBufferAO * ScreenSpaceData.AmbientOcclusion;
+
+			// Subsurface
+			BRANCH if(GBuffer.ShadingModelID == SHADINGMODELID_SUBSURFACE || GBuffer.ShadingModelID == SHADINGMODELID_PREINTEGRATED_SKIN)
+			{
+				// some view dependent and some non view dependent (hard coded)
+				float DependentSplit = 0.5f;
+
+				float3 SubsurfaceColor = ExtractSubsurfaceColor(GBuffer);
+
+				// view independent (shared lookup for diffuse for better performance
+				NonSpecularContribution += DiffuseLookup * SubsurfaceColor * (DependentSplit);
+				// view dependent (blurriness is hard coded)
+				SpecularContribution += TextureCubeSampleLevel(AmbientCubemap, AmbientCubemapSampler, ScreenVector, AbsoluteDiffuseMip - 2.5f).rgb * SubsurfaceColor * (AmbientOcclusion * (1.0f - DependentSplit));
+			}
+
+			FLightAccumulator LightAccumulator = (FLightAccumulator)0;
+
+			LightAccumulator_Add(LightAccumulator, NonSpecularContribution, SpecularContribution, AmbientCubemapColor.rgb);
+
+			OutColor = LightAccumulator_GetResult(LightAccumulator);
+
+			OutColor *= AmbientOcclusion;
+		}
+	*/
+	float saturate(float x)
+	{
+	  return max(0.0, min(1.0, x));
+	}
+
+	void main() {
+		vec3 cameraToVertex = normalize(  vWorldPos.xyz - cameraPosition );
+		vec3 tempN = normalize((vec4(vNormal,0.0) * viewMatrix).xyz);
+
+		vec3 vReflect = refract( cameraToVertex, tempN,refr);
+		vec3 newVec = vReflect;// reflect(viewDir,vNormal);
+
+		vec2 sampleUV;
+		sampleUV.y =  asin( newVec.y )  *(1.0/M_PI)  + 0.5 ;
+		//sampleUV.y =  ( newVec.y * 0.5 + 0.5 );
+		sampleUV.x = atan( newVec.z, newVec.x ) * (1.0/(M_PI*2.0)) + 0.5;
+		//envColor = envMapTexelToLinear( envColor );
+
+		vec4 lal = texture2D(diffuse,vUv);
+		if(size > 50.0) {
+			lal =   vec4(tempN,1.0);
+		} 
+		if ( size > 100.0) {
+			lal = mix(texture2D(diffuse,vUv),texture2D( envMap, sampleUV ),roughness );
+		}
+	     gl_FragColor = lal;
+	}
+</script>
+<script id="fragmentShader2" type="x-shader/x-fragment">
+
+	//uniform vec2 resolution;
+	//uniform float time;
+	//uniform sampler2D texture;
+	varying vec2 vUv;
+	uniform vec3 light;
+	uniform float roughness;
+	uniform sampler2D diffuse;
+	uniform float size;
+	varying vec3 vNormal;
+	varying vec3 pos;
+	
+	#define M_PI 3.1415926535897932384626433832795
+	float saturate(float x)
+	{
+	  return max(0.0, min(1.0, x));
+	}
+
+	void main() {
+
+		vec3 vNorm = normalize(vNormal);
+		vec4 pLight = viewMatrix* vec4(light,1.0);
+		vec3 vLight = normalize(pLight.xyz-pos);
+		vec3 vCamera = normalize( -pos );
+		vec3 vHalf = normalize(vLight + vCamera);
+
+		//LoN		
+		float LoN = saturate(dot(vLight, vNorm));
+		float VoN = saturate(dot(vCamera, vNorm));
+		float LoH = saturate(dot(vHalf,vCamera));
+		float NoH = saturate(dot(vNorm,vHalf));
+
+		//Diffuse
+		vec3 Diffuse = texture2D(diffuse,vUv).xyz;
+		
+		//GGX
+		float rough2 = roughness * roughness;
+		float alphaSqr = rough2*rough2;
+		float den = (NoH*NoH)*(alphaSqr-1.0)+1.0;
+		float GGX = alphaSqr/(M_PI * den * den);
+
+		//Schlick
+		vec3 FCopper = vec3(0.95,0.64,0.54);
+		vec3 FSCopper = vec3(0.98,0.82,0.76);
+		vec3 FDiamond = vec3(0.17,0.17,0.17);
+		vec3 FAluminium = vec3(1.0,1.0,1.0);
+		
+		float ind = pow(1.0-LoH,5.0);
+		vec3 Schlick = vec3(ind + (1.0-ind));
+
+		//Schlick-Smith
+		float k = rough2;
+		float Vis_Smith = 0.5/((VoN* (VoN*(1.0-k) + k)) + (LoN*(LoN*(1.0-k) + k)));
+
+		//Light
+		float distance = .5;//pow(1.+length(pLight.xyz-pos)/size,-2.0);
+
+		//Compositing
+		vec3 endcol = vec3(( Diffuse +  GGX*Schlick*Vis_Smith)*distance*LoN);
+
+		//PixelColor
+	     gl_FragColor = vec4( endcol, 1.0 );
+	}
+</script>
+
+<script>
+//SimpleShader
+	/*
+		varying vec3 vNormal;
+		varying vec3 rel; 
+		void main() {
+			vNormal = (modelMatrix * vec4(normal,0.0)).xyz;
+			rel = cameraPosition.xyz - (modelMatrix * vec4( position, 1.0 )).xyz;
+		    gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+		}
+
+		varying vec3 vNormal;
+		varying vec3 rel; 
+		void main() {
+		    gl_FragColor = vec4( vec3(max(dot(normalize(rel.xyz),normalize(vNormal.xyz)),0.0)), 1.0 );
+
+		}
+	*/
+//Setup Renderer
+	var PI = Math.PI;
+	var renderer = new THREE.WebGLRenderer();
+	renderer.setSize( window.innerWidth, window.innerHeight );
+	document.body.appendChild( renderer.domElement );
+	var scene = new THREE.Scene();
+	var camera = new THREE.PerspectiveCamera(  85, window.innerWidth/window.innerHeight, 0.1, 10000 );
+//Stats
+	var stats = new Stats();
+	stats.setMode( 0 ); 
+	stats.domElement.style.position = 'absolute';
+	stats.domElement.style.top = '0px';
+	document.body.appendChild( stats.domElement );
+	var stats2 = new Stats();
+	stats2.setMode( 1 );
+	stats2.domElement.style.position = 'absolute';
+	stats2.domElement.style.top = '0px';
+	stats2.domElement.style.left = '80px';
+	document.body.appendChild( stats2.domElement );
+	var stats3 = new Stats();
+	stats3.setMode( 2 );
+	stats3.domElement.style.position = 'absolute';
+	stats3.domElement.style.top = '0px';
+	stats3.domElement.style.left = '160px';
+	document.body.appendChild( stats3.domElement );
+//GUI
+	var time = new THREE.Clock(true);
+	var spin = true;
+	var FizzyText = function() {
+	  this.Roughness = 0.8;
+	  this.Size = 10;
+	  this.Refract = 1.0;
+	  this.explode = function() {
+	  time.stop() 
+	  	spin = !spin;
+	  };
+	};
+	var gui,text;
+
+	  text = new FizzyText();
+	  gui = new dat.GUI();
+	  gui.add(text, 'Roughness', 0, 1).onChange(function() {
+	  	shaderMat.uniforms.roughness.value = text.Roughness;
+	  	shaderMat2.uniforms.roughness.value = text.Roughness;
+	  });
+	  gui.add(text, 'Size', 0, 300).onChange(function() {
+	  	shaderMat.uniforms.size.value = text.Size;
+	  	shaderMat2.uniforms.size.value = text.Size;
+	  });
+	  gui.add(text, 'Refract', 0.7, 1.3).onChange(function() {
+	  	shaderMat.uniforms.refr.value = text.Refract;
+	//  	Dome.scale.y = text.Refract;
+	  });
+	  gui.add(text, 'explode');
+//Controls
+	var free = 0;
+	var MouseSens = 1000;
+	var controls = {
+		forward : false,
+		backward : false,
+		left: false,
+		right: false,
+		crouch: false,
+		jump: false,
+		run: false,
+		_theta: 0,
+		_phi: 0
+	}	
+	Controls = new ThirdPersonControls(camera);
+	Controls.update(controls);
+//Lights
+
+	scene.add( new THREE.HemisphereLight( 0x443333, 0x111122 ) );
+	spotLight = new THREE.SpotLight( 0xffffbb, .9 );
+	spotLight.position.set( 0.5, 0.7, 1 );
+	spotLight.position.multiplyScalar( 40 );
+	spotLight.castShadow = true;
+	//spotLight.shadowCameraVisible = true;
+	spotLight.shadowMapWidth = 2048;
+	spotLight.shadowMapHeight = 2048;
+	spotLight.shadowCameraNear = 20;
+	spotLight.shadowCameraFar =  90;
+	spotLight.shadowCameraFov = 40;
+	spotLight.shadowBias = -0.001
+	scene.add( spotLight );
+//Textures
+	var Environment = THREE.ImageUtils.loadTexture( "environment/HighRes.jpg");
+	Environment.minFilter = THREE.LinearFilter;
+	
+	var GenjiDiffuse = THREE.ImageUtils.loadTexture( "obj/textures/Tex_2407_0.png" )
+//Materials
+	var shaderMat = new THREE.ShaderMaterial({
+		uniforms: {
+			time: { type: "f", value: 1.0 },
+			roughness: { type: "f", value: 0.8 },
+			light: { type: "v3", value: new THREE.Vector3(1,0,0)},
+			size: { type : "f", value: 10.0},
+			diffuse : { type: "t", value: GenjiDiffuse},
+			refr : {type: "f", value: 1.0},
+			envMap : {type: "t", value: Environment}
+		},
+
+		vertexShader:   document.getElementById( 'vertexShader' ).textContent,
+		fragmentShader: document.getElementById( 'fragmentShader' ).textContent
+	})
+	var shaderMat2 = new THREE.ShaderMaterial({
+		uniforms: {
+			time: { type: "f", value: 1.0 },
+			roughness: { type: "f", value: 0.8 },
+			light: { type: "v3", value: new THREE.Vector3(1,0,0)},
+			size: { type : "f", value: 10.0},
+			diffuse : { type: "t", value: GenjiDiffuse}
+		},
+		vertexShader:   document.getElementById( 'vertexShader' ).textContent,
+		fragmentShader: document.getElementById( 'fragmentShader2' ).textContent
+	})
+
+	var material = new THREE.MeshPhongMaterial( { color: 0xffffff});// map : THREE.ImageUtils.loadTexture( "obj/textures/Tex_2407_0.png" ,{},load,{}) } );
+	var materialWall = new THREE.MeshPhongMaterial( { color: 0xffffff} );
+	var red = new THREE.MeshBasicMaterial( { color: 0xff0000  , wireframe:true, side: THREE.DoubleSide} );
+	var blue = new THREE.MeshBasicMaterial( { color: 0x0000ff  , wireframe:true, side: THREE.DoubleSide} );
+	var materiala = new THREE.LineBasicMaterial({color: 0x0000ff, side: THREE.DoubleSide,linewidth: 15});
+	var domeMat = new THREE.MeshBasicMaterial( { map: Environment,side: THREE.DoubleSide});
+//Imports
+	var loader = new THREE.OBJLoader();
+	function load() {
+	loader.load( 	'obj/Ninja.obj',  function ( object ) {
+
+			object.traverse(function (object) {
+					if(object instanceof THREE.Mesh) {
+						object.castShadow = true
+						object.material = shaderMat;
+					}
+				})
+			object.position.y = -2;
+			object.position.x = 1;
+			object.position.z = 0
+			object.rotation.y = -Math.PI * 0.2
+			Gayden = object;
+			
+			var object2 = object.clone();
+			object2.position.x = -1;
+			object2.rotation.y = Math.PI * 0.2
+			object2.traverse(function (object2) {
+				if(object2 instanceof THREE.Mesh) {
+					object2.castShadow = true
+					object2.material = shaderMat2;
+				}
+			})
+
+			scene.add( object );
+			scene.add(object2);
+
+
+		},
+		onProgress = function ( xhr ) {
+			if ( xhr.lengthComputable ) {
+				var percentComplete = xhr.loaded / xhr.total * 100;
+				console.log( Math.round(percentComplete, 2) + '% downloaded' );
+			}
+		}, 
+		onError = function ( xhr ) {
+			console.log("LOADERROR")
+		} 
+	);
+	}
+	load();
+//Geometry
+	var boxgeo= new THREE.BoxGeometry(2,2,2);
+	var planefgeo= new THREE.PlaneGeometry(30,30,1,1);
+	var Sphere3 = new THREE.SphereGeometry(1,20,20);
+	var Sphere2 = new THREE.SphereGeometry(.3,20,20);
+	var Spheresmall = new THREE.SphereGeometry(.2,12,12);
+	var domeGeo = new THREE.SphereGeometry( 5000, 60, 40 );
+	
+	var geometry = new THREE.Geometry();
+	geometry.vertices.push(
+		new THREE.Vector3( -10, 0, 0 ),
+		new THREE.Vector3( 10, 0, 0 )
+	);
+//Meshes
+	var Light = new THREE.Mesh(Sphere2,red)
+	scene.add(Light);
+	var line = new THREE.Line( geometry, materiala );
+	scene.add( line )	
+	var Dome = new THREE.Mesh(domeGeo,domeMat);
+		scene.add(Dome);
+	Dome.scale.x = -1;
+	Dome.rotation.y = Math.PI;
+//Physics
+	var PhysicsSystem = new Physics();
+	var testa = new Physics.Sphere(1,1,true);
+	var testb = new Physics.Sphere(1,1,true);
+	var testc = new Physics.Sphere(1,1,true);
+	var testd = new Physics.Sphere(1,1,true);
+
+	var testcube = new Physics.Box(1,true,1,1,1)
+
+	var phFloor = new Physics.Dimension()
+	var phXFloor = new Physics.Dimension()
+	var phZFloor = new Physics.Dimension()
+	var phXpFloor = new Physics.Dimension()
+	var phZpFloor = new Physics.Dimension()
+	var phDpFloor = new Physics.Dimension()
+//Actors
+
+	var Pcube = new Actor(Sphere3,material,testa);
+	var Ccube = new Actor(Sphere3,red,testb);
+	var Dcube = new Actor(Sphere3,red,testc);
+	var Vcube = new Actor(Sphere3,shaderMat,testd);
+	var Cube = new Actor(boxgeo,material,testcube)
+	Pcube.castShadow = true;
+	Ccube.castShadow = true;
+	Dcube.castShadow = true;
+	Vcube.castShadow = true;
+	Cube.castShadow = true;
+	Pcube.receiveShadow = true;
+	Ccube.receiveShadow = true;
+	Dcube.receiveShadow = true;	
+	Vcube.receiveShadow = true;
+	Cube.receiveShadow = true;
+//Half-Spaces
+
+	var Floor = new Actor(planefgeo,materialWall,phFloor)
+	Floor.receiveShadow = true;
+	Floor.rotation.set( -Math.PI * 0.5,0,0)
+	Floor.Collision.setDimension()
+
+	var FloorXp = new Actor(planefgeo,materialWall,phXpFloor)
+	FloorXp.receiveShadow = true;
+	FloorXp.rotation.set(0,0,0)
+	FloorXp.Collision.setDimension()
+
+	var FloorZp = new Actor(planefgeo,materialWall,phZpFloor)
+	FloorZp.receiveShadow = true;
+	FloorZp.rotation.set(0, -Math.PI * 0.5,0)
+	FloorZp.Collision.setDimension()
+
+	var FloorX = new Actor(planefgeo,materialWall,phXFloor)
+	FloorX.receiveShadow = true;
+	FloorX.rotation.set(0,Math.PI * 0.5,0)
+	FloorX.Collision.setDimension()
+
+	var FloorZ = new Actor(planefgeo,materialWall,phZFloor)
+	FloorZ.receiveShadow = true;
+	FloorZ.rotation.set(0, Math.PI ,0)
+	FloorZ.Collision.setDimension()
+
+	var FloorD = new Actor(planefgeo,materialWall,phDpFloor)
+	FloorD.receiveShadow = true;
+	FloorD.rotation.set( -Math.PI * 0.43, 0 ,0)
+	FloorD.Collision.setDimension()
+
+	var halfSpace = [Floor,FloorXp,FloorZp,FloorX,FloorZ,FloorD];
+	for(var v = 0; v < halfSpace.length; v++) {
+		halfSpace[v].visible = false;
+	}
+//Names
+	Pcube.name = "Sphere A";
+	Ccube.name = "Sphere B";
+	Dcube.name = "Sphere C";
+	Vcube.name = "Sphere D";
+	Floor.name = "Floor";
+	FloorX.name = "FloorX"
+	FloorZ.name = "FloorZ"
+//Adding to System
+	scene.add(Cube)
+	scene.add(Dcube);
+	scene.add(Pcube);
+	scene.add(Ccube);
+	scene.add(Vcube);
+	scene.add(Floor)
+	scene.add(FloorX)
+	scene.add(FloorZ)
+	scene.add(FloorXp)
+	scene.add(FloorZp)
+	scene.add(FloorD)
+
+	PhysicsSystem.add(Cube)
+	PhysicsSystem.add(Pcube);
+	PhysicsSystem.add(Ccube);
+	PhysicsSystem.add(Dcube);
+	PhysicsSystem.add(Vcube);
+	PhysicsSystem.add(Floor);
+	PhysicsSystem.add(FloorX)
+	PhysicsSystem.add(FloorZ)
+	PhysicsSystem.add(FloorXp)
+	PhysicsSystem.add(FloorZp)
+	PhysicsSystem.add(FloorD)
+//Springs
+	var teste = new Physics.String(2, 14,Pcube)
+	PhysicsSystem.addString(teste);
+//Transformations
+	Floor.position.y = -2;
+	FloorXp.position.y = 13;
+	FloorXp.position.z = -15;	
+	FloorZp.position.x = 15;
+	FloorZp.position.y = 13;
+	FloorX.position.x = -15;
+	FloorX.position.y = 13;
+	FloorZ.position.y = 13;
+	FloorZ.position.z = 15;
+	FloorD.position.y = -1;
+	FloorD.position.z = -5;
+	Cube.position.x = -5;
+	Cube.position.y = 4;
+	Cube.position.z = 10;
+	Dcube.position.z = 7;
+	Ccube.position.z=  4;
+	Pcube.position.z=  1;
+	Vcube.position.y = 10;
+	Vcube.position.z= -12;
+	teste.position.y =12;
+
+	Vcube.rotation.x = 2;
+	Vcube.rotation.z = 2;
+	Vcube.rotation.y = 2;
+//Initialization
+	var dt = time.getDelta();
+	Controls._target = Vcube.position;
+	renderer.shadowMapEnabled = true;
+	//Vcube.Collision.setMass(5.1);
+	Cube.Collision.setMass(10.1);
+	var Players = [];
+  var Player = new Character(Vcube)
+  Players.push(Player);
+
+//QuadTree
+	var Tree = new QuadTree(1)
+	Tree.addMobile(PhysicsSystem.Objects)
+	var pleb = [];
+	for(object in scene.children) {
+		if (scene.children[object] instanceof Actor) {
+			addToBox(scene.children[object])
+		}
+	}
+
+	function addToBox(object) {
+				var z = new THREE.BoundingBoxHelper(object,0xff0000)
+				scene.add(z);
+				pleb.push(z)
+	}
+//Axis
+	var axisHelper = new THREE.AxisHelper( 5 );
+	scene.add( axisHelper );
+//Events
+	var havePointerLock = 'pointerLockElement' in document ||
+	'mozPointerLockElement' in document ||
+	'webkitPointerLockElement' in document;
+	var domElement = renderer.domElement
+	domElement.requestPointerLock = domElement.requestPointerLock || 
+	domElement.mozRequestPointerLock ||
+	domElement.webkitRequestPointerLock;
+	domElement.requestPointerLock();
+	domElement.addEventListener( 'mousedown', mousedown, false );
+	window.addEventListener('keydown', keydown);
+	window.addEventListener('keypress' , keypress);
+	window.addEventListener('keyup', keyup);
+	//document.addEventListener('onwheel',scroll)
+	domElement.addEventListener('onwheel',scroll)
+	//window.addEventListener('onwheel',scroll)
+	document.exitPointerLock = document.exitPointerLock ||
+	document.mozExitPointerLock ||
+	document.webkitExitPointerLock;
+	document.exitPointerLock();
+	document.addEventListener('pointerlockchange', lockChangeAlert, false);
+	document.addEventListener('mozpointerlockchange', lockChangeAlert, false);
+	document.addEventListener('webkitpointerlockchange', lockChangeAlert, false);
+	window.onresize = function() {
+		camera.aspect = window.innerWidth / window.innerHeight;
+		camera.updateProjectionMatrix();
+		renderer.setSize( window.innerWidth, window.innerHeight );
+	}
+
+	window.onclick = function(event) {
+
+		//MiddleMouse
+		if(event.button == 1) {	
+			for(k = 0; k < 8; k++){
+				for(c = 0; c< 8; c++){
+				var teste = new Physics.Sphere(1,1,true);
+				var Tcube = new Actor(Sphere3,material,teste);
+					scene.add(Tcube);
+					PhysicsSystem.add(Tcube);
+					Tcube.position.y =17
+					Tcube.position.z = 2.2* k - 10
+					Tcube.position.x = 2.2*c - 10
+					Tcube.castShadow = true;
+					Tcube.receiveShadow = true;
+					addToBox(Tcube);
+				}
+
+			}
+		//LeftMouse
+		}else if(event.button == 0) {
+		/*	
+
+			var teste = new Physics.Sphere(.2,1,true);
+			teste.velocity = camera.getWorldDirection().multiplyScalar(20)
+			var Tcube = new Actor(Spheresmall,material,teste);
+			scene.add(Tcube);
+			PhysicsSystem.add(Tcube);
+			Tcube.position.y =camera.position.y
+			Tcube.position.z = camera.position.z
+			Tcube.position.x = camera.position.x
+			Tcube.castShadow = true;
+			Tcube.receiveShadow = true;
+		*/
+			var aboxgeo= new THREE.BoxGeometry(1,4,1);
+			var atestcube = new Physics.Box(1,true,.5,2,.5)
+			//atestcube.velocity = camera.getWorldDirection().multiplyScalar(1)
+			var aCube = new Actor(aboxgeo,material,atestcube)
+			scene.add(aCube)
+			PhysicsSystem.add(aCube)
+			aCube.position.y =camera.position.y
+			aCube.position.z = camera.position.z
+			aCube.position.x = camera.position.x
+			aCube.rotation.set(Math.random()*4,Math.random()*4,Math.random()*42)
+			aCube.castShadow = true;
+			aCube.receiveShadow = true;
+
+		//RightMouse
+		} else if(event.button == 2) {
+			free++;
+			if(free>2)free=0;
+			console.log(Controls)
+			if(free == 0) {
+				Controls =new ThirdPersonControls(camera,Vcube);
+				Controls._target = Vcube.position;
+			} else if(free == 1) { 
+				controls._theta = (controls._theta*0.7+1.1 - Controls.PI/2)/1.5
+				Controls = new FreeLookControls(camera);
+			} else if(free == 2) { 
+				Controls = new StrategicControls(camera);
+				
+			}
+		}
+	}
+	window.onfocus = function (e) {
+
+		time.start();
+	}
+	window.onblur = function (e) {
+
+	    time.stop();
+	} 
+	window.onscroll = function(e) {}
+	function lockChangeAlert() {
+		if(document.pointerLockElement === document.body ||
+		document.mozPointerLockElement ===  document.body ||
+		document.webkitPointerLockElement ===  document.body ) {
+			console.log('The pointer lock status is now locked');
+			document.addEventListener("mousemove", Mouselook, false);
+		} else {
+			console.log('The pointer lock status is now unlocked');  
+			document.removeEventListener("mousemove", Mouselook, false);
+		}
+	}
+	function Mouselook (evt) {
+
+		var x = evt.movementX;
+		var y = evt.movementY * dt * 100;
+
+		controls._theta -= y/MouseSens;
+		controls._phi += x/MouseSens;
+		
+		if(controls._theta < -1)  {controls._theta = -1;}
+		else if(controls._theta > 1 ) {controls._theta = 1 ;}
+	}
+	function scroll(event) {
+	}
+	function mousedown(event) {
+
+		document.body.requestPointerLock();
+	}
+	function keydown(event) {
+		event.stopPropagation();
+		switch( event.keyCode ) {
+
+			case 38: /*up*/
+			case 87: /*W*/ 	controls.forward = true; break;
+
+			case 40: /*down*/
+			case 83: /*S*/ 	 controls.backward = true; break;
+
+			case 37: /*left*/
+			case 65: /*A*/   controls.left = true; break;
+
+			case 39: /*right*/
+			case 68: /*D*/    controls.right = true; break;
+			
+			case 17: /*Ctrl*/
+			case 67: /*C*/     controls.crouch = true; break;
+			
+			case 32: /*space*/ controls.jump = true; break;
+
+			case 16: /*Shift*/ controls.run = true; break;
+		}
+	}
+	function keypress(event) {	
+	}
+	function keyup(event) {
+		event.stopPropagation();
+		switch( event.keyCode ) {
+
+			case 38: /*up*/
+			case 87: /*W*/ 	controls.forward =false; break;
+
+			case 40: /*down*/
+			case 83: /*S*/ 	 controls.backward =false; break;
+
+			case 37: /*left*/
+			case 65: /*A*/   controls.left = false; break;
+
+			case 39: /*right*/
+			case 68: /*D*/    controls.right = false; break;
+			
+			case 17: /*Ctrl*/
+			case 67: /*C*/     controls.crouch = false; break;
+			case 32: /*space*/ controls.jump = false; break;
+
+			case 16: /*Shift*/ controls.run = false; break;
+		}
+	}	
+//Socket
+
+var socket = io();
+
+$('#textform').submit(function(){
+	socket.emit('chat message', $('#m').val());
+	return false;
+});
+
+socket.on('chat message', function(msg){
+	$('#messages').append($('<li>').text(msg));
+});
+ 
+socket.on('serversend',function(players) {
+	
+	for(var z = 0; z < players.length; z+=5) {
+		var tempC = new Physics.Sphere(1,1,true);
+		var tempM = new Actor(Sphere3,shaderMat,tempC);
+		tempM.castShadow = true;
+		tempM.receiveShadow = true;
+		tempM.position.copy(players[z+1])
+		tempM.quaternion._x = players[z+2]._x;
+		tempM.quaternion._y = players[z+2]._y;
+		tempM.quaternion._z = players[z+2]._z;
+		tempM.quaternion._w = players[z+2]._w;
+		tempM.Collision.velocity.copy(players[z+3])
+		tempM.Collision.rotVelocity.copy(players[z+4])
+		scene.add(tempM);
+		PhysicsSystem.add(tempM)
+		var tempPlayer = new Character(tempM);
+		tempPlayer.id = players[z]
+		Players.push(tempPlayer);
+		console.log("Added player ",tempPlayer )
+	}
+	
+});
+
+socket.on('newPlayer', function(players) {
+	//	console.log( players)
+})
+
+socket.on('joinedRoom', function(players) {
+	for(var z = 0; z < players.length; z+=5) {
+		var tempC = new Physics.Sphere(1,1,true);
+		var tempM = new Actor(Sphere3,shaderMat,tempC);
+		tempM.castShadow = true;
+		tempM.receiveShadow = true;
+		tempM.position.copy(players[z+1])
+		tempM.quaternion._x = players[z+2]._x;
+		tempM.quaternion._y = players[z+2]._y;
+		tempM.quaternion._z = players[z+2]._z;
+		tempM.quaternion._w = players[z+2]._w;
+		tempM.Collision.velocity.copy(players[z+3])
+		tempM.Collision.rotVelocity.copy(players[z+4])
+		scene.add(tempM);
+		PhysicsSystem.add(tempM)
+		var tempPlayer = new Character(tempM);
+		tempPlayer.id = players[z]
+		Players[tempPlayer.id] = tempPlayer;
+		console.log("Added player ",tempPlayer )
+	}
+	console.log(Players)
+})
+ 
+
+socket.emit('join', 1);
+
+console.log(socket);
+
+function Senddata() {
+	var data = {};
+	data.position = Player.object.position;
+	data.quaternion = Player.object.quaternion;
+	data.pVelocity = Player.object.Collision.velocity;
+	data.rVelocity = Player.object.Collision.rotVelocity;
+    socket.emit("clientsend", data);
+}
+
+ var aaa = 0;
+//RenderFunction
+	function render () {
+		aaa++;
+		shaderMat.uniforms.time.value = Math.sin(time.elapsedTime*3)*0.5
+		if(spin) {
+		Light.position.x = Math.sin(time.elapsedTime) * 3;
+		Light.position.z = Math.cos(time.elapsedTime) * 3;
+		Light.position.y = 2;
+		}
+		shaderMat.uniforms.light.value = Light.position;
+		shaderMat2.uniforms.light.value = Light.position;
+
+		stats.update()
+		stats2.update()
+		stats3.update()
+		
+		dt = time.getDelta();
+		line.geometry.dynamic = true;
+		line.geometry.vertices[0].copy(teste.end.position.clone())
+		line.geometry.vertices[1].copy(teste.position.clone())
+		line.geometry.verticesNeedUpdate = true;
+		PhysicsSystem.update();
+		Controls.update(controls);
+		Senddata();
+		requestAnimationFrame( render );
+		renderer.render(scene, camera);
+	}
+	
+render();
+
+
+
+
+</script>
+</html>

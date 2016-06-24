@@ -1,0 +1,562 @@
+<html>
+	<head>
+		<script src ="js/three.js"></script>
+		<script src ="js/Actor.js"></script>
+		<script src ="js/Stats.js"></script>
+		<script src ="js/QuadTree.js"></script>
+		<script src ="js/Gameplay/Character.js"></script>
+		<script src ="js/Controls/ThirdPersonControls.js"></script>
+		<script src ="js/Controls/FreeLookControls.js"></script>
+		<script src ="js/Controls/StrategicControls.js"></script>
+		<script src ="js/Physics/PhysicsSystem.js"></script>
+		<script src ="js/Physics/Object.js"></script>
+		<script src ="js/Physics/Sphere.js"></script>
+		<script src ="js/Physics/Dimension.js"></script>
+		<script src ="js/Physics/String.js"></script>
+		<script src ="js/Physics/Box.js"></script>
+		<script src ="js/Physics/Contact.js"></script>		
+		<script src ="js/loaders/OBJMTLLoader.js"></script>
+		<script src ="js/loaders/DDSLoader.js"></script>
+		<script src ="js/loaders/MTLLoader.js"></script>
+		<script src ="js/Math/Matrix3ext.js"></script>
+		
+		<style>
+		body { margin: 0; } 
+		canvas { width: 100%; height: 100% }
+		</style>
+		<script>
+		</script>
+	</head>
+	<body>
+	</body>
+<script>
+
+//Stats
+	var stats = new Stats();
+	stats.setMode( 0 ); 
+	stats.domElement.style.position = 'absolute';
+	stats.domElement.style.top = '0px';
+	document.body.appendChild( stats.domElement );
+	var stats2 = new Stats();
+	stats2.setMode( 1 );
+	stats2.domElement.style.position = 'absolute';
+	stats2.domElement.style.top = '0px';
+	stats2.domElement.style.left = '80px';
+	document.body.appendChild( stats2.domElement );
+	var stats3 = new Stats();
+	stats3.setMode( 2 );
+	stats3.domElement.style.position = 'absolute';
+	stats3.domElement.style.top = '0px';
+	stats3.domElement.style.left = '160px';
+	document.body.appendChild( stats3.domElement );
+//Setup
+	var PI = Math.PI;
+	var renderer = new THREE.WebGLRenderer();
+	renderer.setSize( window.innerWidth, window.innerHeight );
+	document.body.appendChild( renderer.domElement );
+	var scene = new THREE.Scene();
+//Events
+	var havePointerLock = 'pointerLockElement' in document ||
+	'mozPointerLockElement' in document ||
+	'webkitPointerLockElement' in document;
+	var domElement = renderer.domElement
+	domElement.requestPointerLock = domElement.requestPointerLock || 
+	domElement.mozRequestPointerLock ||
+	domElement.webkitRequestPointerLock;
+	domElement.requestPointerLock();
+	domElement.addEventListener( 'mousedown', mousedown, false );
+	window.addEventListener('keydown', keydown);
+	window.addEventListener('keypress' , keypress);
+	window.addEventListener('keyup', keyup);
+	//document.addEventListener('onwheel',scroll)
+	domElement.addEventListener('onwheel',scroll)
+//	window.addEventListener('onwheel',scroll)
+	document.exitPointerLock = document.exitPointerLock ||
+	document.mozExitPointerLock ||
+	document.webkitExitPointerLock;
+	document.exitPointerLock();
+	document.addEventListener('pointerlockchange', lockChangeAlert, false);
+	document.addEventListener('mozpointerlockchange', lockChangeAlert, false);
+	document.addEventListener('webkitpointerlockchange', lockChangeAlert, false);
+
+
+
+//Controls
+	var MouseSens = 1000;
+	var controls = {
+		forward : false,
+		backward : false,
+		left: false,
+		right: false,
+		crouch: false,
+		jump: false,
+		run: false,
+		_theta: 0,
+		_phi: 0
+	}	
+	var camera = new THREE.PerspectiveCamera(  85, window.innerWidth/window.innerHeight, 0.1, 10000 );
+	Controls = new ThirdPersonControls(camera);
+	Controls.update(controls);
+//Lights
+
+	var ambientLight = new THREE.AmbientLight( 0x111111);
+	//scene.add(ambientLight);
+	var light = new THREE.PointLight( 0xffFFFF, 1, 1000 );
+	light.position.setY(3)
+	//scene.add( light );
+	scene.add( new THREE.HemisphereLight( 0x443333, 0x111122 ) );
+	spotLight = new THREE.SpotLight( 0xffffbb, .9 );
+	spotLight.position.set( 0.5, 0.7, 1 );
+	spotLight.position.multiplyScalar( 40 );
+	spotLight.castShadow = true;
+	//spotLight.shadowCameraVisible = true;
+	spotLight.shadowMapWidth = 2048;
+	spotLight.shadowMapHeight = 2048;
+	spotLight.shadowCameraNear = 20;
+	spotLight.shadowCameraFar =  90;
+	spotLight.shadowCameraFov = 40;
+	spotLight.shadowBias = -0.001
+	scene.add( spotLight );
+//Imports
+
+/*	var Gayden;
+	//THREE.Loader.Handlers.add( /\.dds$/i, new THREE.DDSLoader() );
+
+	var loader = new THREE.OBJMTLLoader();
+	loader.load( 	'obj/queen.obj', 'obj/queen.mtl',function ( object ) {
+			console.log(object)
+			object.scale.multiplyScalar(0.4)
+			object.traverse(function (object) {
+					if(object instanceof THREE.Mesh) {
+						object.castShadow = true
+					}
+				})
+			object.position.y = 1.1;
+			object.position.x = 0;
+			object.position.z = 10
+			object.rotation.y = -Math.PI * 0.2
+			Gayden = object;
+			scene.add( object );
+			render()
+		},
+		onProgress = function ( xhr ) {
+			if ( xhr.lengthComputable ) {
+				var percentComplete = xhr.loaded / xhr.total * 100;
+				console.log( Math.round(percentComplete, 2) + '% downloaded' );
+			}
+		}, 
+		onError = function ( xhr ) {
+			console.log("LOADERROR")
+		} 
+	);
+	*/
+
+//Materials
+var texturet;
+	texturet = THREE.ImageUtils.loadTexture( "obj/textures/NewTennisBallColor.jpg",{} ,function (  ) {
+		//material.map = texturet;
+		render();
+
+} ,function() {
+	console.log("adf")
+		render();
+	});
+	
+	var material = new THREE.MeshPhongMaterial( { color: 0xffffff})//, map : texturet } );
+	var materialWall = new THREE.MeshPhongMaterial( { color: 0xffffff} );
+
+	texturet.wrapS = THREE.RepeatWrapping;
+	texturet.wrapT = THREE.RepeatWrapping;
+	//texturet.repeat.set( 4, 4 );
+	
+	var red = new THREE.MeshBasicMaterial( { color: 0xff0000  , wireframe:true, side: THREE.DoubleSide} );
+	var blue = new THREE.MeshBasicMaterial( { color: 0x0000ff  , wireframe:true, side: THREE.DoubleSide} );
+	var materiala = new THREE.LineBasicMaterial({color: 0x0000ff, side: THREE.DoubleSide,linewidth: 15});
+//Geometry
+	var boxgeo= new THREE.BoxGeometry(2,2,2);
+	var planefgeo= new THREE.PlaneGeometry(30,30,10,10);
+	var Sphere3 = new THREE.SphereGeometry(1,20,20);
+	var Spheresmall = new THREE.SphereGeometry(.2,12,12);
+	var geometry = new THREE.Geometry();
+	geometry.vertices.push(
+		new THREE.Vector3( -10, 0, 0 ),
+		new THREE.Vector3( 10, 0, 0 )
+	);
+//Meshes
+	var line = new THREE.Line( geometry, materiala );
+
+	
+	scene.add( line )
+//Physics
+	var PhysicsSystem = new Physics();
+	var testa = new Physics.Sphere(1,1,true);
+	var testb = new Physics.Sphere(1,1,true);
+	var testc = new Physics.Sphere(1,1,true);
+	var testd = new Physics.Sphere(1,1,true);
+
+	var testcube = new Physics.Box(1,true,1,1,1)
+
+	var phFloor = new Physics.Dimension()
+	var phXFloor = new Physics.Dimension()
+	var phZFloor = new Physics.Dimension()
+	var phXpFloor = new Physics.Dimension()
+	var phZpFloor = new Physics.Dimension()
+	var phDpFloor = new Physics.Dimension()
+//Actors
+	var Pcube = new Actor(Sphere3,material,testa);
+	var Ccube = new Actor(Sphere3,red,testb);
+	var Dcube = new Actor(Sphere3,red,testc);
+	var Vcube = new Actor(Sphere3,red,testd);
+	var Cube = new Actor(boxgeo,material,testcube)
+	Pcube.castShadow = true;
+	Ccube.castShadow = true;
+	Dcube.castShadow = true;
+	Vcube.castShadow = true;
+	Cube.castShadow = true;
+	Pcube.receiveShadow = true;
+	Ccube.receiveShadow = true;
+	Dcube.receiveShadow = true;	
+	Vcube.receiveShadow = true;
+	Cube.receiveShadow = true;
+
+	var Floor = new Actor(planefgeo,materialWall,phFloor)
+	Floor.receiveShadow = true;
+	Floor.rotation.set( -Math.PI * 0.5,0,0)
+	Floor.Collision.setDimension()
+
+	var FloorXp = new Actor(planefgeo,materialWall,phXpFloor)
+	FloorXp.receiveShadow = true;
+	FloorXp.rotation.set(0,0,0)
+	FloorXp.Collision.setDimension()
+
+	var FloorZp = new Actor(planefgeo,materialWall,phZpFloor)
+	FloorZp.receiveShadow = true;
+	FloorZp.rotation.set(0, -Math.PI * 0.5,0)
+	FloorZp.Collision.setDimension()
+
+	var FloorX = new Actor(planefgeo,materialWall,phXFloor)
+	FloorX.receiveShadow = true;
+	FloorX.rotation.set(0,Math.PI * 0.5,0)
+	FloorX.Collision.setDimension()
+
+	var FloorZ = new Actor(planefgeo,materialWall,phZFloor)
+	FloorZ.receiveShadow = true;
+	FloorZ.rotation.set(0, Math.PI ,0)
+	FloorZ.Collision.setDimension()
+
+	var FloorD = new Actor(planefgeo,materialWall,phDpFloor)
+	FloorD.receiveShadow = true;
+	FloorD.rotation.set( -Math.PI * 0.43, 0 ,0)
+	FloorD.Collision.setDimension()
+
+
+	Pcube.name = "Sphere A";
+	Ccube.name = "Sphere B";
+	Dcube.name = "Sphere C";
+	Vcube.name = "Sphere D";
+	Floor.name = "Floor";
+	FloorX.name = "FloorX"
+	FloorZ.name = "FloorZ"
+	
+	scene.add(Cube)
+	scene.add(Dcube);
+	scene.add(Pcube);
+	scene.add(Ccube);
+	scene.add(Vcube);
+	scene.add(Floor)
+	scene.add(FloorX)
+	scene.add(FloorZ)
+	scene.add(FloorXp)
+	scene.add(FloorZp)
+	scene.add(FloorD)
+	PhysicsSystem.add(Cube)
+	PhysicsSystem.add(Pcube);
+	PhysicsSystem.add(Ccube);
+	PhysicsSystem.add(Dcube);
+	PhysicsSystem.add(Vcube);
+	PhysicsSystem.add(Floor);
+	PhysicsSystem.add(FloorX)
+	PhysicsSystem.add(FloorZ)
+	PhysicsSystem.add(FloorXp)
+	PhysicsSystem.add(FloorZp)
+	PhysicsSystem.add(FloorD)
+	
+//Springs
+	var teste = new Physics.String(2, 14,Pcube)
+	PhysicsSystem.addString(teste);
+//Transformations
+
+	Floor.position.y = -2
+	FloorXp.position.z = -15;
+	FloorZp.position.x = 15
+	FloorXp.position.y = 13;
+	FloorZp.position.y = 13
+	FloorX.position.x = -15;
+	FloorZ.position.z = 15
+	FloorX.position.y = 13;
+	FloorZ.position.y = 13
+	FloorD.position.y = -1;
+	FloorD.position.z = -5;
+	Cube.position.z = 10;	
+	Cube.position.x = -5;
+	Cube.position.y = 4;	
+	Dcube.position.z = 7;
+	Ccube.position.z=  4;
+	Pcube.position.z=  1;
+	Vcube.position.z= -12;
+	Vcube.position.y = 10;
+	teste.position.y =12;
+	Vcube.Collision.setMass(5.1);
+	Cube.Collision.setMass(10.1);
+
+//Initialization
+	var time = new THREE.Clock(true);
+	var dt = time.getDelta();
+	Controls._target = Vcube.position;
+	renderer.shadowMapEnabled = true;
+	//renderer.shadowMapCullFace = THREE.CullFaceBack
+	//Vcube.rotationAutoUpdate = false;
+	Vcube.rotation.x = 2;
+	Vcube.rotation.z = 2;
+	Vcube.rotation.y = 2;
+	//Vcube.Collision.rotVelocity.z = 3;
+	//Vcube.Collision.velocity.z = 5;
+
+//QuadTree
+
+	var Tree = new QuadTree(1)
+	Tree.addMobile(PhysicsSystem.Objects)
+	var pleb = [];
+	for(object in scene.children) {
+		if (scene.children[object] instanceof Actor) {
+			addToBox(scene.children[object])
+		}
+	}
+
+	function addToBox(object) {
+				var z = new THREE.BoundingBoxHelper(object,0xff0000)
+				scene.add(z);
+				pleb.push(z)
+	}
+
+//Character
+var Player = new Character(Vcube)
+
+//Axis
+var axisHelper = new THREE.AxisHelper( 5 );
+scene.add( axisHelper );
+
+//RenderFunction
+function render () {
+	/*
+	if(controls.forward) {
+		Cube.position.x += 5 *dt;
+	}
+	if(controls.backward) {
+		Cube.position.x -= 5 *dt;
+	}
+	if(controls.left) {
+		Cube.position.z += 5 *dt;
+	}
+	if(controls.right) {
+		Cube.position.z -= 5 *dt;
+	}
+*/
+
+	stats.update()
+	stats2.update()
+	stats3.update()
+	requestAnimationFrame( render );
+	dt = time.getDelta();
+	line.geometry.dynamic = true;
+	line.geometry.vertices[0].copy(teste.end.position.clone())
+	line.geometry.vertices[1].copy(teste.position.clone())
+	line.geometry.verticesNeedUpdate = true;
+	PhysicsSystem.update();
+
+	Controls.update(controls);
+	/*
+		for(object in pleb) {
+		pleb[object].update()
+		//console.log(pleb[object])
+	}
+*/
+	renderer.render(scene, camera);
+};
+
+
+window.onresize = function() {
+	camera.aspect = window.innerWidth / window.innerHeight;
+	camera.updateProjectionMatrix();
+	renderer.setSize( window.innerWidth, window.innerHeight );
+}
+var free = 0;
+
+window.onclick = function(event) {
+
+	//MiddleMouse
+	if(event.button == 1) {	
+		for(k = 0; k < 8; k++){
+			for(c = 0; c< 8; c++){
+			var teste = new Physics.Sphere(1,1,true);
+			var Tcube = new Actor(Sphere3,material,teste);
+				scene.add(Tcube);
+				PhysicsSystem.add(Tcube);
+				Tcube.position.y =17
+				Tcube.position.z = 2.2* k - 10
+				Tcube.position.x = 2.2*c - 10
+				Tcube.castShadow = true;
+				Tcube.receiveShadow = true;
+				addToBox(Tcube);
+			}
+
+		}
+	//LeftMouse
+	}else if(event.button == 0) {
+/*	
+
+		var teste = new Physics.Sphere(.2,1,true);
+		teste.velocity = camera.getWorldDirection().multiplyScalar(20)
+		var Tcube = new Actor(Spheresmall,material,teste);
+		scene.add(Tcube);
+		PhysicsSystem.add(Tcube);
+		Tcube.position.y =camera.position.y
+		Tcube.position.z = camera.position.z
+		Tcube.position.x = camera.position.x
+		Tcube.castShadow = true;
+		Tcube.receiveShadow = true;
+*/
+		var aboxgeo= new THREE.BoxGeometry(1,4,1);
+		var atestcube = new Physics.Box(1,true,.5,2,.5)
+		//atestcube.velocity = camera.getWorldDirection().multiplyScalar(1)
+		var aCube = new Actor(aboxgeo,material,atestcube)
+		scene.add(aCube)
+		PhysicsSystem.add(aCube)
+		aCube.position.y =camera.position.y
+		aCube.position.z = camera.position.z
+		aCube.position.x = camera.position.x
+		aCube.rotation.set(Math.random()*4,Math.random()*4,Math.random()*42)
+		aCube.castShadow = true;
+		aCube.receiveShadow = true;
+
+	//RightMouse
+	} else if(event.button == 2) {
+		free++;
+		if(free>2)free=0;
+		console.log(Controls)
+		if(free == 0) {
+			Controls =new ThirdPersonControls(camera,Vcube);
+			Controls._target = Vcube.position;
+		} else if(free == 1) { 
+			controls._theta = (controls._theta*0.7+1.1 - Controls.PI/2)/1.5
+			Controls = new FreeLookControls(camera);
+		} else if(free == 2) { 
+			Controls = new StrategicControls(camera);
+			
+		}
+	}
+}
+
+window.onfocus = function (e) {
+	time.start();
+ }
+window.onblur = function (e) {
+    time.stop();
+ }
+  
+function lockChangeAlert() {
+	if(document.pointerLockElement === document.body ||
+	document.mozPointerLockElement ===  document.body ||
+	document.webkitPointerLockElement ===  document.body ) {
+		console.log('The pointer lock status is now locked');
+		document.addEventListener("mousemove", Mouselook, false);
+	} else {
+		console.log('The pointer lock status is now unlocked');  
+		document.removeEventListener("mousemove", Mouselook, false);
+	}
+}
+
+function Mouselook (evt) {
+
+	var x = evt.movementX;
+	var y = evt.movementY * dt * 100;
+
+	controls._theta -= y/MouseSens;
+	controls._phi += x/MouseSens;
+	
+	if(controls._theta < -1)  {controls._theta = -1;}
+	else if(controls._theta > 1 ) {controls._theta = 1 ;}
+ }
+
+function scroll (event) {
+	console.log("adf")
+	console.log(event)
+
+
+}
+
+window.onscroll = function(e) {
+
+	console.log(e)
+}
+
+function mousedown(event) {
+	document.body.requestPointerLock();
+};
+	
+function keydown(event) {
+	event.stopPropagation();
+	switch( event.keyCode ) {
+
+		case 38: /*up*/
+		case 87: /*W*/ 	controls.forward = true; break;
+
+		case 40: /*down*/
+		case 83: /*S*/ 	 controls.backward = true; break;
+
+		case 37: /*left*/
+		case 65: /*A*/   controls.left = true; break;
+
+		case 39: /*right*/
+		case 68: /*D*/    controls.right = true; break;
+		
+		case 17: /*Ctrl*/
+		case 67: /*C*/     controls.crouch = true; break;
+		
+		case 32: /*space*/ controls.jump = true; break;
+
+		case 16: /*Shift*/ controls.run = true; break;
+	}
+}
+	
+function keypress(event) {
+
+}
+
+function keyup(event) {
+	event.stopPropagation();
+	switch( event.keyCode ) {
+
+		case 38: /*up*/
+		case 87: /*W*/ 	controls.forward =false; break;
+
+		case 40: /*down*/
+		case 83: /*S*/ 	 controls.backward =false; break;
+
+		case 37: /*left*/
+		case 65: /*A*/   controls.left = false; break;
+
+		case 39: /*right*/
+		case 68: /*D*/    controls.right = false; break;
+		
+		case 17: /*Ctrl*/
+		case 67: /*C*/     controls.crouch = false; break;
+		case 32: /*space*/ controls.jump = false; break;
+
+		case 16: /*Shift*/ controls.run = false; break;
+	}
+}
+		
+		</script>
+	</body>
+</html>

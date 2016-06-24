@@ -1,0 +1,577 @@
+
+<html>
+<head>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+<link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/themes/smoothness/jquery-ui.css">
+<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/jquery-ui.min.js"></script>
+<!--<script src="three.js"></script>
+
+<script src="TrackballControls.js"></script>-->
+<style>
+#machine { float:left;}
+//body { margin: 0; }
+			canvas { width: 100%; height: 100% }
+</style>
+<script>
+
+$(document).ready(function(){
+    $(".inputTextBox").keypress(function(event){
+        var inputValue = event.which;
+        if((inputValue < 97 || inputValue > 122) && (inputValue < 65 || inputValue > 90)){
+            event.preventDefault();
+        }
+    });
+
+	$(".inputNumber").keypress(function(event){
+        var inputValue = event.which;
+        if((inputValue < 48 || inputValue > 57)){
+            event.preventDefault();
+        }
+    });
+
+});
+ 
+
+</script>
+
+</head>
+<body>
+<div id="machine">
+	<b>EnigmaMachine </b><br>
+	Basenumbers: <br>
+	Left Rotor: <input class="inputTextBox" size="1" style="text-transform:uppercase;" id="1" value="A" maxlength="1"></input>	
+	Middle Rotor: <input class="inputTextBox"   size="1" style="text-transform:uppercase;" id="2" value="A" maxlength="1"></input>
+	Right Rotor: <input class="inputTextBox"   size="1" style="text-transform:uppercase;" id="3" value="A" maxlength="1"></input>
+	<br>
+	<br>
+	Rotors: 
+	<br>
+	
+	Left Rotor: <select id="SelectRotor1">
+	  <option selected="true" value="rot1">I</option>
+	  <option value="rot2">II</option>
+	  <option   value="rot3">III</option>
+	  <option value="rot4">IV</option>
+	  <option value="rot5">V</option>
+	</select>
+
+	Middle Rotor:<select id="SelectRotor2">
+	  <option value="rot1">I</option>
+	  <option selected="true" value="rot2">II</option>
+	  <option value="rot3">III</option>
+	  <option value="rot4">IV</option>
+	  <option value="rot5">V</option>
+	</select>
+
+	Right Rotor:<select id="SelectRotor3">
+	  <option value="rot1">I</option>
+	  <option value="rot2">II</option>
+	  <option selected="true" value="rot3">III</option>
+	  <option value="rot4">IV</option>
+	  <option value="rot5">V</option>
+	</select>
+
+	<br>
+	<br>
+
+	Reflector:
+	<br>
+	<select id="Reflector">
+	  <option value="reflectA">Reflector A</option>
+	  <option selected="true"value="reflectB">Reflector B</option>
+	  <option  value="reflectC">Reflector C</option>
+	  <option value="reflectBsmall">Reflector B small</option>
+	  <option value="reflectCsmall">Reflector C small</option>
+	</select>
+
+	<br>
+	<br>
+
+	<table>
+		<tr>
+			<td>Received input: </td>
+			<td><p id="InputLetter">---</p></td>
+		</tr>
+		<tr>
+			<td>After Right Rotor: </td>
+			<td><p id="Rotor1In">---</p></td>
+		</tr>
+		<tr>
+			<td>After Middle Rotor: </td>
+			<td><p id="Rotor2In">---</p></td>
+		</tr>
+		<tr>
+			<td>After Left Rotor:</td>
+			<td><p id="Rotor3In">---</p></td>
+		</tr>
+		<tr>
+			<td>After Reflector: </td>
+			<td><p id="ReflectLetter">---</p></td>
+		</tr>
+		<tr>
+			<td>After Left Rotor:</td>
+			<td><p id="Rotor1Out">---</p></td>
+		</tr>
+		<tr>
+			<td>After Middle Rotor:</td>
+			<td><p id="Rotor2Out">---</p></td>
+		</tr>
+		<tr>
+			<td>After Right Rotor: </td>
+			<td><p id="Rotor3Out">---</p></td>
+		</tr>
+	</table>
+
+	<div id="Ball"></div>
+	Input: <input id="input" class="inputTextBox"  style="text-transform:uppercase;" oninput="newFunction()" />
+
+	<H1 id="output" style=" word-wrap: break-word;"></H1>
+</div>
+
+<div id="calculator">
+	<b>Calculator</b> <br>
+	Rotor Amount: <input class="inputNumber"  id="RotorAmount" value="5" maxlength="2" size="1" oninput="Rot()"></input>	
+	Slot Amount: <input class="inputNumber"  id="SlotAmount" value="3" maxlength="2"  size="1" oninput="Slot()"></input>	
+	Pair Amount: <input class="inputNumber" id="PairAmount" value="10" maxlength="2" size="1" oninput="Pair()"></input>	
+	<button onclick="calculate()">Calculate</button>
+	
+	<br>
+	<br>
+	Options:
+	<br>
+		<table>
+		<tr>
+			<td>Rotor order options; </td>
+			<td><p id="RotorOrderOpt">---</p></td>
+		</tr>
+		<tr>
+			<td>Rotor basenumber options: </td>
+			<td><p id="RotorBaseOpt">---</p></td>
+		</tr>
+		<tr>
+			<td>Plugboard options: </td>
+			<td><p id="PlugboardOpt">---</p></td>
+		</tr>
+		<tr>
+			<td>Total options: </td>
+			<td><p id="TotalOptions">---</p></td>
+		</tr>
+</div>
+
+<script>
+
+var rotorel = document.getElementById("RotorAmount");
+var slotel =  document.getElementById("SlotAmount");
+var pairel = document.getElementById("PairAmount");
+
+var RotorOrderOpt =document.getElementById("RotorOrderOpt");
+var RotorBaseOpt =document.getElementById("RotorBaseOpt");
+var PlugboardOpt =document.getElementById("PlugboardOpt");
+var TotalOptions =  document.getElementById("TotalOptions");
+
+calculate();
+function calculate() {
+	
+
+	var RotorAmount = parseInt(rotorel.value);
+	var SlotAmount = parseInt(slotel.value);
+	var PairAmount = parseInt(pairel.value);
+	
+
+	
+	if(SlotAmount > RotorAmount) {
+		alert("Error Slot Amount is higher than Rotor Amount");
+		return;
+	}
+
+	var anwser = Math.floor(factorial(RotorAmount)/
+						  factorial(RotorAmount-SlotAmount));
+						
+	RotorOrderOpt.innerHTML = anwser;
+	calc =	Math.floor(Math.pow(26,SlotAmount));				 
+	RotorBaseOpt.innerHTML  =  calc;
+	anwser *= calc;
+
+	
+	calc = Math.floor(factorial(26)/ 
+					  (factorial(26-PairAmount*2) * 
+					  Math.pow(2,PairAmount) * 
+					  factorial(PairAmount) ));
+	
+	PlugboardOpt.innerHTML =  calc
+	anwser *= calc;
+	if(anwser == Infinity) TotalOptions.innerHTML= "Options exceed 1024-bit number (>1.797693e+308)";
+	else TotalOptions.innerHTML= anwser;
+	
+}
+
+function Pair() {
+pairel.value = parseInt(pairel.value);
+if (isNaN(parseInt(pairel.value)) == true)pairel.value = 0;
+	if(parseInt(pairel.value) > 13) pairel.value = 13;
+	calculate();
+}
+function Slot() {
+slotel.value = parseInt(slotel.value);
+if (isNaN(parseInt(slotel.value)) == true)slotel.value = 0;
+	if(parseInt(slotel.value) > parseInt(rotorel.value)) rotorel.value = parseInt(slotel.value);
+	calculate();
+}
+
+function Rot() {
+rotorel.value = parseInt(rotorel.value);
+if (isNaN(parseInt(rotorel.value)) == true)rotorel.value = 0;
+  if(parseInt(slotel.value) > parseInt(rotorel.value)) slotel.value = parseInt(rotorel.value);
+ calculate();
+}
+
+
+function factorial(num) {
+	var anwser = 1;
+		for(var x = num; x > 0; x--)
+		{
+			anwser *= x; 
+		}
+	return anwser;
+}
+
+/*
+
+var scene = new THREE.Scene();
+			var camera = new THREE.PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 0.1, 10000 );
+
+			controls = new THREE.TrackballControls( camera );
+				controls.rotateSpeed = 31.0;
+				controls.zoomSpeed = 1.2;
+				controls.panSpeed = 0.8;
+				controls.noZoom = false;
+				controls.noPan = false;
+				controls.staticMoving = true;
+				controls.dynamicDampingFactor = .0003;
+
+			
+			var renderer = new THREE.WebGLRenderer();
+			renderer.setSize( window.innerWidth, window.innerHeight );
+			document.body.appendChild( renderer.domElement );
+var directionalLight = new THREE.PointLight( 0xffffff, 1,100 );
+
+			scene.add(directionalLight);
+			var geometry = new THREE.BoxGeometry( 1, 1, 1 );
+			var material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
+			var red = new THREE.MeshPhongMaterial( { color: 0xff0000  , wireframe:false, side: THREE.DoubleSide} );
+			var cube = new THREE.Mesh( geometry, material );
+			scene.add( cube );
+			var x= 3;
+			var y = 3;
+			var z = 5;
+			directionalLight.position.set( x, y,z );
+			cube.position.set(x,y,z);
+			
+var geom = new THREE.PlaneGeometry(10,10, 100,100); 
+
+function graphcalculate(maxpair,maxslot,maxrotor) {
+
+	for(var i in geom.vertices) {
+
+		geom.vertices[i].setZ(pointcalculate(i%101, Math.floor(i/101)));
+	}
+	
+}
+
+
+
+
+function pointcalculatef(x,y) {
+	return (y)/10;	
+	
+	
+}
+function pointcalculate(x,y) {
+	
+	if(y>x) return 0;
+	
+	var anwser = Math.floor(factorial(x)/
+						  factorial(x-y));
+
+	anwser *= Math.floor(Math.pow(26,y));			
+ return Math.log10(anwser)/30;
+
+	anwser *= Math.floor(factorial(26)/ 
+					  (factorial(26-PairAmount*2) * 
+					  Math.pow(2,PairAmount) * 
+					  factorial(PairAmount) ));
+
+}
+
+graphcalculate();
+
+geom.verticesNeedUpdate = true;
+geom.normalsNeedUpdate = true;
+geom.computeVertexNormals ();
+geom.computeFaceNormals();
+
+var object = new THREE.Mesh( geom, red );
+object.position.z = -10;//move a bit back - size of 500 is a bit big
+
+scene.add(object);
+
+camera.position.z = 2;
+var render = function () {
+
+	requestAnimationFrame( render );
+		//	controls.update();
+	cube.rotation.x += 0.1;
+	cube.rotation.y += 0.1;
+	renderer.render(scene, camera);
+};
+render();
+
+*/
+
+</script>
+
+
+<script>
+
+
+
+var menu = document.getElementById("Ball");
+var output = document.getElementById("output");
+Letters = [ "Q","W","E","R","T","Z","U","I","O", null,"A","S","D","F","G","H","J","K",null,"P","Y","X","C","V", "B","N","M","L"]
+var alfab = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+var Rot1 = "EKMFLGDQVZNTOWYHXUSPAIBRCJ_R";
+var Rot2 = "AJDKSIRUXBLHWTMCQGZNPYFVOE_F";
+var Rot3 = "BDFHJLCPRTXVZNYEIWGAKMUSQO_W";
+var Rot4 = "ESOVPZJAYQUIRHXLNFTGKDCMWB_K";
+var Rot5 = "VZBRGITYUPSDNHLXAWMJQOFECK_A";
+
+var Rot6 = "JPGVOUMFYQBENHZRDKASXLICTW";
+var Rot7 = "NZJHGRCXMYSWBOUFAIVLPEKQDT";
+var Rot8 = "FKQHTLXOCBJSPDZRAMEWNIUYGV";
+var RotBeta = "LEYJVCNIXWPBQMDRTAKZGFUHOS";
+var RotGamma = "FSOKANUERHMBTIYCWLQPZXVGJD";
+
+var ReflectA = "EJMZALYXVBWFCRQUONTSPIKHGD";
+var ReflectB = "YRUHQSLDPXNGOKMIEBFZCWVJAT";
+var ReflectC = "FVPJIAOYEDRZXWGCTKUQSBNMHL";
+var ReflectBSmall = "ENKQAUYWJICOPBLMDXZVFTHRGS";
+var ReflectCSmall = "RDOBJNTKVEHMLFCWZAXGYIPSUQ";
+
+var elRotor1In = document.getElementById("Rotor1In");
+var elRotor2In = document.getElementById("Rotor2In");
+var elRotor3In = document.getElementById("Rotor3In");
+var elRotor1Out = document.getElementById("Rotor1Out");
+var elRotor2Out = document.getElementById("Rotor2Out");
+var elRotor3Out = document.getElementById("Rotor3Out");
+var elInputLetter = document.getElementById("InputLetter");
+var elReflectLetter = document.getElementById("ReflectLetter");
+
+var loc1 = document.getElementById("1");
+var loc2 = document.getElementById("2"); 
+var loc3 = document.getElementById("3");
+
+var elRotL = document.getElementById("SelectRotor1");
+var elRotM = document.getElementById("SelectRotor2");
+var elRotR = document.getElementById("SelectRotor3");
+var elReflect = document.getElementById("Reflector");
+
+function rotor(string, element,position,ring ) {
+	this.element = element;
+	this.string = string;
+	this.position = position;
+	this.ring = ring;
+}
+rotorL = new rotor(Rot1, loc1,"A".charCodeAt(0) - 65,"B");
+rotorM = new rotor(Rot2, loc2, "A".charCodeAt(0) - 65,"U");
+rotorR = new rotor(Rot3, loc3,"A".charCodeAt(0) - 65,"L");
+function reflector(string) {
+	this.string = string;
+}
+var Reflector = new reflector(ReflectB);
+
+
+for ( var i in Letters ) {
+	if(Letters[i] == null ) {
+		var space = document.createElement( 'br' );
+		menu.appendChild( space);
+	} else {
+		var button = document.createElement( 'button' );
+		button.innerHTML =Letters[i];
+		menu.appendChild( button );
+	button.addEventListener( "click", generateButtonCallback(i) );
+		Letters[i] = button;
+		
+	}
+}
+
+function generateButtonCallback(i)  {
+	return function(event) {
+		process(Letters[i].innerHTML);
+	}
+};
+
+function process(letter) {
+	var num = letter.charCodeAt(0);
+
+	
+	
+	//Plugboardpass();
+	
+	elInputLetter.innerHTML = String.fromCharCode(num);
+	
+	if(GetRotor() == false) return;
+
+	
+	
+	RotorTick();
+	num = Rotorpass(num,rotorR);
+	
+	elRotor1In.innerHTML = String.fromCharCode(num);
+	num = Rotorpass(num,rotorM);
+	
+	elRotor2In.innerHTML = String.fromCharCode(num);
+	num = Rotorpass(num,rotorL);
+	
+	elRotor3In.innerHTML = String.fromCharCode(num);
+	num = Reflectpass(num, ReflectB);
+	
+	elReflectLetter.innerHTML = String.fromCharCode(num);
+	num = ReverseRotorpass(num,rotorL);
+	
+	elRotor1Out.innerHTML = String.fromCharCode(num);
+	num = ReverseRotorpass(num,rotorM);
+	
+	elRotor2Out.innerHTML = String.fromCharCode(num);
+	num = ReverseRotorpass(num,rotorR);
+	elRotor3Out.innerHTML = String.fromCharCode(num);
+	
+	
+	//Plugboardpass();
+
+
+	
+	output.innerHTML  +=String.fromCharCode(num);
+
+}
+
+function GetRotor() {
+	
+	rotorR.string =  selectRot(elRotR);
+	rotorM.string = selectRot(elRotM);
+	rotorL.string = selectRot(elRotL);
+	
+	Reflector.string = selectReflector(elReflect);
+	
+	if(rotorR.string == rotorM.string || rotorR.string == rotorL.string || rotorM.string == rotorL.string) {
+		alert("Select Distinct Rotors");
+		return false;
+	}
+	
+	rotorR.position = rotorR.element.value.toUpperCase().charCodeAt(0) - 65;
+	rotorM.position = rotorM.element.value.toUpperCase().charCodeAt(0) - 65;
+	rotorL.position = rotorL.element.value.toUpperCase().charCodeAt(0) - 65;
+	return true;
+}
+
+function selectReflector(elReflector) {
+	var string;
+	if(elReflector.value == "reflectA") string = ReflectA;
+	else if(elReflector.value == "reflectB") string = ReflectB;
+	else if(elReflector.value == "reflectC") string = ReflectC;
+	else if(elReflector.value == "reflectBsmall") string = ReflectBSmall;
+	else if(elReflector.value == "reflectCsmall") string = ReflectCSmall;
+	else alert("error reflector not existing");
+	return string;
+	
+}
+
+
+function selectRot(elRotor) {
+	 var string;
+	if(elRotor.value == "rot1") string = Rot1;
+	else if (elRotor.value == "rot2") string = Rot2;
+	else if (elRotor.value == "rot3") string = Rot3;
+	else if (elRotor.value == "rot4") string = Rot4;
+	else if (elRotor.value == "rot5") string = Rot5;
+	else alert("error rotor not existing");
+	return string;
+
+}
+
+
+function RotorTick() {
+
+	rotorR.position++;
+	
+	if(rotorR.position > 25) rotorR.position = 0;
+	if((rotorM.position+66) == rotorM.string.charCodeAt(27)) {
+			rotorM.position++;
+			rotorL.position++;
+	}
+	if((rotorR.position+65) == rotorR.string.charCodeAt(27)) {
+		
+		rotorM.position++;
+	}
+	
+	if(rotorM.position > 25) rotorM.position = 0;
+	if(rotorL.position > 25) rotorL.position = 0;
+
+	rotorL.element.value = String.fromCharCode(rotorL.position+65);
+	rotorR.element.value = String.fromCharCode(rotorR.position+65);
+	rotorM.element.value = String.fromCharCode(rotorM.position+65);
+	
+}
+
+
+function Rotorpass(num, rotor) {
+	num = num - 65;
+	num += rotor.position;
+
+	if(num >= 26) num -=  26;
+
+	num = rotor.string[num];
+	num = num.charCodeAt(0);;
+	num = num-rotor.position;
+	if(num < 65) num += 26;
+	
+	return num;
+	
+}
+
+function ReverseRotorpass(num,rotor) {
+	num += rotor.position;
+	if(num > 90) num -= 26;
+	num = rotor.string.indexOf( String.fromCharCode(num));
+	
+	num = num +65;
+	num -= rotor.position;
+	if(num < 65) num += 26;
+	return num;
+}
+	
+function Reflectpass(num, reflect) {
+	num = num - 65;
+	num = Reflector.string[num];
+	num = num.charCodeAt(0);;
+	return num;
+
+}
+	
+function newFunction() {
+	var insert = document.getElementById("input");
+	process(insert.value.substr(insert.value.length - 1).toUpperCase());
+}
+
+
+/*
+
+document.addEventListener('keyup', function(event) {
+	if(event.keyCode <= 90 && event.keyCode >=  65)
+    process(String.fromCharCode(event.keyCode));
+
+});
+*/
+
+</script>
+</body>
+</html>
