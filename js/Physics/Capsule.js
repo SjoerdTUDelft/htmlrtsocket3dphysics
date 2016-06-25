@@ -22,5 +22,5 @@ Physics.Capsule = function(radius,length ,mass,rigid) {
 
 }
 
-Physics.Sphere.prototype = Object.create( Physics.Object.prototype );
-Physics.Sphere.prototype.constructor = Physics.Sphere
+Physics.Capsule.prototype = Object.create( Physics.Object.prototype );
+Physics.Capsule.prototype.constructor = Physics.Capsule

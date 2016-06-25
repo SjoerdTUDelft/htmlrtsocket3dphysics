@@ -17,3 +17,7 @@ Physics.Sphere = function(radius,mass,rigid) {
 
 Physics.Sphere.prototype = Object.create( Physics.Object.prototype );
 Physics.Sphere.prototype.constructor = Physics.Sphere
+
+if( 'undefined' != typeof global ) {
+    module.exports = Physics.Sphere;
+}

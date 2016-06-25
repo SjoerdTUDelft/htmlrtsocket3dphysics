@@ -12,6 +12,7 @@ var PlayerAmount = 0;
 var oldTime = new Date().getTime();
 var deltaTime = new Date().getTime();
 
+
    var 
         gameport        = process.env.PORT || 4004,
         UUID          = require('node-uuid'),
@@ -22,7 +23,20 @@ var app = require('express')();
 var httptemp = require('http');
 var http = httptemp.Server(app);
 var io = require('socket.io')(http);
-var THREE = require('three');
+THREE = require('three');
+require('./js/Math/Matrix3ext')
+var Physics = new require('./js/Physics/PhysicsSystem')
+require('./js/Actor');
+ 
+console.log(Object);
+ Physics();
+
+var testa = new Physics.Sphere(1,1,true);
+
+
+
+
+
 http.listen(gameport, function(){
 	StartTime();
 	console.log('listening on *:gameport');

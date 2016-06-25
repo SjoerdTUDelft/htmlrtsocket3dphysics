@@ -15,15 +15,19 @@ ThirdPersonControls= function ( camera) {
 		camera.position.y = this._target.y +this._radius * Math.cos(theta) ;
 
 		if(controls.forward) {
-			
-			Vcube.Collision.velocity.set(0,0,0)
 			var z = new THREE.Vector3();
 			z.copy(camera.getWorldDirection())
 			z.y = 0;
 			z.normalize();
-			z.multiplyScalar(dt*this.movementSpeed)
-			Vcube.position.add(z)
+			z.multiplyScalar(this.movementSpeed)
+			Player.object.Collision.velocity.x = z.x;
+			Player.object.Collision.velocity.z = z.z;
+		}
+		if(controls.jump) {
 
+			var z = new THREE.Vector3();
+ 
+			Player.object.Collision.velocity.y = 10;
 		}
 
 		camera.lookAt(this._target);

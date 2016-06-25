@@ -29,6 +29,7 @@ Physics.Object = function(mass,rigid) {
 
 Physics.Object.prototype = {
 	setAwake : function(bool) {
+		this.isAwake = true; /*
 		if(bool == true) {
 			this.isAwake = true;
 			motion = sleepEpsilon*12.0;
@@ -37,6 +38,7 @@ Physics.Object.prototype = {
 			this.velocity.setZero()
 			this.rotVelocity.setZero();
 		}
+		*/
 	},
 	setMass : function(mass) {
 		this.invmass = mass == undefined ?  1 : 1/mass;
@@ -135,4 +137,8 @@ Physics.Object.prototype = {
 
 
 
+}
+
+if( 'undefined' != typeof global ) {
+    module.exports = Physics.Object;
 }

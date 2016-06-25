@@ -6,3 +6,7 @@ Actor = function(geometry,material,physObj) {
 }
 Actor.prototype = Object.create( THREE.Mesh.prototype );
 Actor.prototype.constructor  = Actor;
+
+if( 'undefined' != typeof global ) {
+    module.exports = Actor;
+}

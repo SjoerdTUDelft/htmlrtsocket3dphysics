@@ -1,6 +1,7 @@
 <!doctype html>
 <html>
 <head>
+	<!--
   <link rel="apple-touch-icon" sizes="57x57" href="/favicons/apple-touch-icon-57x57.png">
   <link rel="apple-touch-icon" sizes="60x60" href="/favicons/apple-touch-icon-60x60.png">
   <link rel="apple-touch-icon" sizes="72x72" href="/favicons/apple-touch-icon-72x72.png">
@@ -21,6 +22,7 @@
   <meta name="msapplication-TileImage" content="/favicons/mstile-144x144.png">
   <meta name="msapplication-config" content="/favicons/browserconfig.xml">
   <meta name="theme-color" content="#ffffff">
+  -->
   <script src ="js/three.js"></script>
   <script src ="js/Actor.js"></script>
   <script src ="js/Stats.js"></script>
@@ -493,6 +495,10 @@
 </script>
 
 <script>
+ 
+ 
+online = typeof(io) !== 'undefined'
+ 
 //SimpleShader
 	/*
 		varying vec3 vNormal;
@@ -1035,7 +1041,7 @@
 		}
 	}	
 //Socket
-
+if(online) {
 var socket = io();
 
 $('#textform').submit(function(){
@@ -1054,12 +1060,10 @@ socket.on('newPlayer', function(players) {
 socket.on('joinedRoom', function(players) {
 	Player.id = socket.id;
 	Players['/#' + socket.id] =Player;
-	console.log(socket.id)
-	console.log("added players ", players);
+
 	for(var z = 0; z < players.length; z+=5) {
 		addNewPlayer(players,z)
 	}
-	console.log(Players)
 })
 
 function addNewPlayer(players,z) {
@@ -1083,9 +1087,7 @@ function addNewPlayer(players,z) {
 }
 
  socket.on('serversend',function(players) {
-	 console.log(players)
 	for(var z = 0; z < players.length; z+=5) {	
-		console.log(Players[players[z]])
 		Players[players[z]].object.position.copy(players[z+1])
 		Players[players[z]].object.quaternion._x = players[z+2]._x;
 		Players[players[z]].object.quaternion._y = players[z+2]._y;
@@ -1097,9 +1099,7 @@ function addNewPlayer(players,z) {
 });
 
 socket.emit('join', 1);
-
-console.log(socket);
-
+ 
 function Senddata() {
 	var data = {};
 	data.position = Player.object.position;
@@ -1108,7 +1108,7 @@ function Senddata() {
 	data.rVelocity = Player.object.Collision.rotVelocity;
     socket.emit("clientsend", data);
 }
-
+}
  var aaa = 0;
 //RenderFunction
 	function render () {
@@ -1133,7 +1133,9 @@ function Senddata() {
 		line.geometry.verticesNeedUpdate = true;
 		PhysicsSystem.update();
 		Controls.update(controls);
-		Senddata();
+		if(online) {
+			Senddata();
+		}
 		requestAnimationFrame( render );
 		renderer.render(scene, camera);
 	}

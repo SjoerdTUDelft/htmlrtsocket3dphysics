@@ -1,5 +1,4 @@
 Physics = function() {
-	
 this.Objects = [];
 this.Strings = [];
 this.Statics = [];
@@ -667,7 +666,16 @@ Physics.prototype = {
 }
 
 
-
+if( 'undefined' != typeof global ) {
+    module.exports = Physics;
+	require('./Object')
+	require('./Contact')
+	require('./Box')
+	require('./Capsule')
+	require('./Dimension')
+	require('./Sphere')	
+	require('./String')	
+}
 
 
 
