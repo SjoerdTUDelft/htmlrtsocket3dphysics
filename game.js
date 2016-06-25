@@ -119,7 +119,7 @@ function StartTime() {
 		deltaTime = new Date().getTime() - oldTime;
 		oldTime = new Date().getTime();
 		sendToClient();
-	}, 50);
+	}, 30);
 }
 
 function sendToClient() {
@@ -131,8 +131,8 @@ function sendToClient() {
 		data.push(Players[z].velocity);
 		data.push(Players[z].rotVelocity);
 	}
-	console.log(data);
-	socket.emit("serversend", data);
+ 
+	io.to(1).emit("serversend", data);
 }
 
 Player = function(sock) {

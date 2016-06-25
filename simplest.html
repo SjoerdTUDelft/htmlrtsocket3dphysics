@@ -835,7 +835,7 @@
 	Cube.Collision.setMass(10.1);
 	var Players = [];
   var Player = new Character(Vcube)
-  Players.push(Player);
+ 
 
 //QuadTree
 	var Tree = new QuadTree(1)
@@ -1047,57 +1047,54 @@ socket.on('chat message', function(msg){
 	$('#messages').append($('<li>').text(msg));
 });
  
-socket.on('serversend',function(players) {
-	
-	for(var z = 0; z < players.length; z+=5) {
-		var tempC = new Physics.Sphere(1,1,true);
-		var tempM = new Actor(Sphere3,shaderMat,tempC);
-		tempM.castShadow = true;
-		tempM.receiveShadow = true;
-		tempM.position.copy(players[z+1])
-		tempM.quaternion._x = players[z+2]._x;
-		tempM.quaternion._y = players[z+2]._y;
-		tempM.quaternion._z = players[z+2]._z;
-		tempM.quaternion._w = players[z+2]._w;
-		tempM.Collision.velocity.copy(players[z+3])
-		tempM.Collision.rotVelocity.copy(players[z+4])
-		scene.add(tempM);
-		PhysicsSystem.add(tempM)
-		var tempPlayer = new Character(tempM);
-		tempPlayer.id = players[z]
-		Players.push(tempPlayer);
-		console.log("Added player ",tempPlayer )
-	}
-	
-});
-
 socket.on('newPlayer', function(players) {
-	//	console.log( players)
+	addNewPlayer(players,0)
 })
 
 socket.on('joinedRoom', function(players) {
+	Player.id = socket.id;
+	Players['/#' + socket.id] =Player;
+	console.log(socket.id)
+	console.log("added players ", players);
 	for(var z = 0; z < players.length; z+=5) {
-		var tempC = new Physics.Sphere(1,1,true);
-		var tempM = new Actor(Sphere3,shaderMat,tempC);
-		tempM.castShadow = true;
-		tempM.receiveShadow = true;
-		tempM.position.copy(players[z+1])
-		tempM.quaternion._x = players[z+2]._x;
-		tempM.quaternion._y = players[z+2]._y;
-		tempM.quaternion._z = players[z+2]._z;
-		tempM.quaternion._w = players[z+2]._w;
-		tempM.Collision.velocity.copy(players[z+3])
-		tempM.Collision.rotVelocity.copy(players[z+4])
-		scene.add(tempM);
-		PhysicsSystem.add(tempM)
-		var tempPlayer = new Character(tempM);
-		tempPlayer.id = players[z]
-		Players[tempPlayer.id] = tempPlayer;
-		console.log("Added player ",tempPlayer )
+		addNewPlayer(players,z)
 	}
 	console.log(Players)
 })
- 
+
+function addNewPlayer(players,z) {
+	var tempC = new Physics.Sphere(1,1,true);
+	var tempM = new Actor(Sphere3,shaderMat,tempC);
+	tempM.castShadow = true;
+	tempM.receiveShadow = true;
+	tempM.position.copy(players[z+1])
+	tempM.quaternion._x = players[z+2]._x;
+	tempM.quaternion._y = players[z+2]._y;
+	tempM.quaternion._z = players[z+2]._z;
+	tempM.quaternion._w = players[z+2]._w;
+	tempM.Collision.velocity.copy(players[z+3])
+	tempM.Collision.rotVelocity.copy(players[z+4])
+	scene.add(tempM);
+	PhysicsSystem.add(tempM)
+	var tempPlayer = new Character(tempM);
+	tempPlayer.id = players[z]
+	Players[tempPlayer.id] = tempPlayer;
+	console.log("Added player ",tempPlayer )
+}
+
+ socket.on('serversend',function(players) {
+	 console.log(players)
+	for(var z = 0; z < players.length; z+=5) {	
+		console.log(Players[players[z]])
+		Players[players[z]].object.position.copy(players[z+1])
+		Players[players[z]].object.quaternion._x = players[z+2]._x;
+		Players[players[z]].object.quaternion._y = players[z+2]._y;
+		Players[players[z]].object.quaternion._z = players[z+2]._z;
+		Players[players[z]].object.quaternion._w = players[z+2]._w;
+		Players[players[z]].object.Collision.velocity.copy(players[z+3])
+		Players[players[z]].object.Collision.rotVelocity.copy(players[z+4])
+	}
+});
 
 socket.emit('join', 1);
 
