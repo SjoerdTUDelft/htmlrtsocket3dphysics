@@ -11,7 +11,8 @@ Actor = function(geometry,material,physObj) {
 
 if( 'undefined' != typeof global ) {
 	Actor.prototype = Object.create( THREE.Object3D.prototype );
-    module.exports = Actor;
+    Actor.prototype.constructor  = Actor;
+	module.exports = Actor;
 } else {
 	Actor.prototype = Object.create( THREE.Mesh.prototype );
 	Actor.prototype.constructor  = Actor;
