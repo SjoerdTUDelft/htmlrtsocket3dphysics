@@ -40,6 +40,7 @@
   <script src ="js/Physics/Box.js"></script>
   <script src ="js/Physics/Contact.js"></script>		
   <script src ="js/loaders/OBJLoader.js"></script>
+  <script src ="maps/testmap.js"></script>
   <script src ="js/Math/Matrix3ext.js"></script>
   <script type="text/javascript" src="js/dat.gui.min.js"></script>
   <script type="text/javascript" src="/socket.io/socket.io.js"></script>
@@ -520,6 +521,7 @@ online = typeof(io) !== 'undefined'
 	var PI = Math.PI;
 	var renderer = new THREE.WebGLRenderer();
 	renderer.setSize( window.innerWidth, window.innerHeight );
+	renderer.shadowMapEnabled = true;
 	document.body.appendChild( renderer.domElement );
 	var scene = new THREE.Scene();
 	var camera = new THREE.PerspectiveCamera(  85, window.innerWidth/window.innerHeight, 0.1, 10000 );
@@ -541,6 +543,8 @@ online = typeof(io) !== 'undefined'
 	stats3.domElement.style.top = '0px';
 	stats3.domElement.style.left = '160px';
 	document.body.appendChild( stats3.domElement );
+//LOAD MAP
+	var TESTMAPOBJECTS = TESTMAP(scene);
 //GUI
 	var time = new THREE.Clock(true);
 	var spin = true;
@@ -567,7 +571,6 @@ online = typeof(io) !== 'undefined'
 	  });
 	  gui.add(text, 'Refract', 0.7, 1.3).onChange(function() {
 	  	shaderMat.uniforms.refr.value = text.Refract;
-	//  	Dome.scale.y = text.Refract;
 	  });
 	  gui.add(text, 'explode');
 //Controls
@@ -586,264 +589,50 @@ online = typeof(io) !== 'undefined'
 	}	
 	Controls = new ThirdPersonControls(camera);
 	Controls.update(controls);
-//Lights
-
-	scene.add( new THREE.HemisphereLight( 0x443333, 0x111122 ) );
-	spotLight = new THREE.SpotLight( 0xffffbb, .9 );
-	spotLight.position.set( 0.5, 0.7, 1 );
-	spotLight.position.multiplyScalar( 40 );
-	spotLight.castShadow = true;
-	//spotLight.shadowCameraVisible = true;
-	spotLight.shadowMapWidth = 2048;
-	spotLight.shadowMapHeight = 2048;
-	spotLight.shadowCameraNear = 20;
-	spotLight.shadowCameraFar =  90;
-	spotLight.shadowCameraFov = 40;
-	spotLight.shadowBias = -0.001
-	scene.add( spotLight );
-//Textures
-	var Environment = THREE.ImageUtils.loadTexture( "environment/HighRes.jpg");
-	Environment.minFilter = THREE.LinearFilter;
-	
-	var GenjiDiffuse = THREE.ImageUtils.loadTexture( "obj/textures/Tex_2407_0.png" )
-//Materials
-	var shaderMat = new THREE.ShaderMaterial({
-		uniforms: {
-			time: { type: "f", value: 1.0 },
-			roughness: { type: "f", value: 0.8 },
-			light: { type: "v3", value: new THREE.Vector3(1,0,0)},
-			size: { type : "f", value: 10.0},
-			diffuse : { type: "t", value: GenjiDiffuse},
-			refr : {type: "f", value: 1.0},
-			envMap : {type: "t", value: Environment}
-		},
-
-		vertexShader:   document.getElementById( 'vertexShader' ).textContent,
-		fragmentShader: document.getElementById( 'fragmentShader' ).textContent
-	})
-	var shaderMat2 = new THREE.ShaderMaterial({
-		uniforms: {
-			time: { type: "f", value: 1.0 },
-			roughness: { type: "f", value: 0.8 },
-			light: { type: "v3", value: new THREE.Vector3(1,0,0)},
-			size: { type : "f", value: 10.0},
-			diffuse : { type: "t", value: GenjiDiffuse}
-		},
-		vertexShader:   document.getElementById( 'vertexShader' ).textContent,
-		fragmentShader: document.getElementById( 'fragmentShader2' ).textContent
-	})
-
-	var material = new THREE.MeshPhongMaterial( { color: 0xffffff});// map : THREE.ImageUtils.loadTexture( "obj/textures/Tex_2407_0.png" ,{},load,{}) } );
-	var materialWall = new THREE.MeshPhongMaterial( { color: 0xffffff} );
-	var red = new THREE.MeshBasicMaterial( { color: 0xff0000  , wireframe:true, side: THREE.DoubleSide} );
-	var blue = new THREE.MeshBasicMaterial( { color: 0x0000ff  , wireframe:true, side: THREE.DoubleSide} );
-	var materiala = new THREE.LineBasicMaterial({color: 0x0000ff, side: THREE.DoubleSide,linewidth: 15});
-	var domeMat = new THREE.MeshBasicMaterial( { map: Environment,side: THREE.DoubleSide});
-//Imports
-	var loader = new THREE.OBJLoader();
-	function load() {
-	loader.load( 	'obj/Ninja.obj',  function ( object ) {
-
-			object.traverse(function (object) {
-					if(object instanceof THREE.Mesh) {
-						object.castShadow = true
-						object.material = shaderMat;
-					}
-				})
-			object.position.y = -2;
-			object.position.x = 1;
-			object.position.z = 0
-			object.rotation.y = -Math.PI * 0.2
-			Gayden = object;
-			
-			var object2 = object.clone();
-			object2.position.x = -1;
-			object2.rotation.y = Math.PI * 0.2
-			object2.traverse(function (object2) {
-				if(object2 instanceof THREE.Mesh) {
-					object2.castShadow = true
-					object2.material = shaderMat2;
-				}
-			})
-
-			scene.add( object );
-			scene.add(object2);
-
-
-		},
-		onProgress = function ( xhr ) {
-			if ( xhr.lengthComputable ) {
-				var percentComplete = xhr.loaded / xhr.total * 100;
-				console.log( Math.round(percentComplete, 2) + '% downloaded' );
-			}
-		}, 
-		onError = function ( xhr ) {
-			console.log("LOADERROR")
-		} 
-	);
+//Initialization
+	var PhysicsSystem = new Physics();
+	for(var z in TESTMAPOBJECTS.physics) {
+		scene.add(TESTMAPOBJECTS.physics[z])
+		PhysicsSystem.add(TESTMAPOBJECTS.physics[z])
 	}
-	load();
-//Geometry
-	var boxgeo= new THREE.BoxGeometry(2,2,2);
-	var planefgeo= new THREE.PlaneGeometry(30,30,1,1);
+
 	var Sphere3 = new THREE.SphereGeometry(1,20,20);
-	var Sphere2 = new THREE.SphereGeometry(.3,20,20);
-	var Spheresmall = new THREE.SphereGeometry(.2,12,12);
-	var domeGeo = new THREE.SphereGeometry( 5000, 60, 40 );
+	var testd = new Physics.Sphere(1,1,true);
+	var Vcube = new Actor(Sphere3,shaderMat,testd);
+	Vcube.castShadow = true;
+    Vcube.receiveShadow = true;
+	Vcube.position.z= -12;
+	Vcube.position.y = 10;
+	Vcube.rotation.x = 2;
+	Vcube.rotation.z = 2;
+	Vcube.rotation.y = 2;
+	scene.add(Vcube);
+	PhysicsSystem.add(Vcube);
+	Controls._target = Vcube.position;
+	var Players = [];
+	var PlayerAmount = 0;
+  	var Player = new Character(Vcube)
+
 	
+
+
+	var dt = time.getDelta();
+	var aaa = 0;
+	var Sphere2 = new THREE.SphereGeometry(.3,20,20);
+    var Light = new THREE.Mesh(Sphere2,shaderMat)
+	scene.add(Light);
+
 	var geometry = new THREE.Geometry();
 	geometry.vertices.push(
 		new THREE.Vector3( -10, 0, 0 ),
 		new THREE.Vector3( 10, 0, 0 )
 	);
-//Meshes
-	var Light = new THREE.Mesh(Sphere2,red)
-	scene.add(Light);
-	var line = new THREE.Line( geometry, materiala );
+
+	var teste = TESTMAPOBJECTS.strings[0]
+	var mtBlueLine = new THREE.LineBasicMaterial({color: 0x0000ff, side: THREE.DoubleSide,linewidth: 15});
+	var line = new THREE.Line( geometry, mtBlueLine );
 	scene.add( line )	
-	var Dome = new THREE.Mesh(domeGeo,domeMat);
-		scene.add(Dome);
-	Dome.scale.x = -1;
-	Dome.rotation.y = Math.PI;
-//Physics
-	var PhysicsSystem = new Physics();
-	var testa = new Physics.Sphere(1,1,true);
-	var testb = new Physics.Sphere(1,1,true);
-	var testc = new Physics.Sphere(1,1,true);
-	var testd = new Physics.Sphere(1,1,true);
-
-	var testcube = new Physics.Box(1,true,1,1,1)
-
-	var phFloor = new Physics.Dimension()
-	var phXFloor = new Physics.Dimension()
-	var phZFloor = new Physics.Dimension()
-	var phXpFloor = new Physics.Dimension()
-	var phZpFloor = new Physics.Dimension()
-	var phDpFloor = new Physics.Dimension()
-//Actors
-
-	var Pcube = new Actor(Sphere3,material,testa);
-	var Ccube = new Actor(Sphere3,red,testb);
-	var Dcube = new Actor(Sphere3,red,testc);
-	var Vcube = new Actor(Sphere3,shaderMat,testd);
-	var Cube = new Actor(boxgeo,material,testcube)
-	Pcube.castShadow = true;
-	Ccube.castShadow = true;
-	Dcube.castShadow = true;
-	Vcube.castShadow = true;
-	Cube.castShadow = true;
-	Pcube.receiveShadow = true;
-	Ccube.receiveShadow = true;
-	Dcube.receiveShadow = true;	
-	Vcube.receiveShadow = true;
-	Cube.receiveShadow = true;
-//Half-Spaces
-
-	var Floor = new Actor(planefgeo,materialWall,phFloor)
-	Floor.receiveShadow = true;
-	Floor.rotation.set( -Math.PI * 0.5,0,0)
-	Floor.Collision.setDimension()
-
-	var FloorXp = new Actor(planefgeo,materialWall,phXpFloor)
-	FloorXp.receiveShadow = true;
-	FloorXp.rotation.set(0,0,0)
-	FloorXp.Collision.setDimension()
-
-	var FloorZp = new Actor(planefgeo,materialWall,phZpFloor)
-	FloorZp.receiveShadow = true;
-	FloorZp.rotation.set(0, -Math.PI * 0.5,0)
-	FloorZp.Collision.setDimension()
-
-
-	var FloorX = new Actor(planefgeo,materialWall,phXFloor)
-	FloorX.receiveShadow = true;
-	FloorX.rotation.set(0,Math.PI * 0.5,0)
-	FloorX.Collision.setDimension()
-
-	var FloorZ = new Actor(planefgeo,materialWall,phZFloor)
-	FloorZ.receiveShadow = true;
-	FloorZ.rotation.set(0, Math.PI ,0)
-	FloorZ.Collision.setDimension()
-
-	var FloorD = new Actor(planefgeo,materialWall,phDpFloor)
-	FloorD.receiveShadow = true;
-	FloorD.rotation.set( -Math.PI * 0.43, 0 ,0)
-	FloorD.Collision.setDimension()
-
-	var halfSpace = [Floor,FloorXp,FloorZp,FloorX,FloorZ,FloorD];
-	for(var v = 0; v < halfSpace.length; v++) {
-		halfSpace[v].visible = false;
-	}
-//Names
-	Pcube.name = "Sphere A";
-	Ccube.name = "Sphere B";
-	Dcube.name = "Sphere C";
-	Vcube.name = "Sphere D";
-	Floor.name = "Floor";
-	FloorX.name = "FloorX"
-	FloorZ.name = "FloorZ"
-//Adding to System
-	scene.add(Cube)
-	scene.add(Dcube);
-	scene.add(Pcube);
-	scene.add(Ccube);
-	scene.add(Vcube);
-	scene.add(Floor)
-	scene.add(FloorX)
-	scene.add(FloorZ)
-	scene.add(FloorXp)
-	scene.add(FloorZp)
-	scene.add(FloorD)
-
-	PhysicsSystem.add(Cube)
-	PhysicsSystem.add(Pcube);
-	PhysicsSystem.add(Ccube);
-	PhysicsSystem.add(Dcube);
-	PhysicsSystem.add(Vcube);
-	PhysicsSystem.add(Floor);
-	PhysicsSystem.add(FloorX)
-	PhysicsSystem.add(FloorZ)
-	PhysicsSystem.add(FloorXp)
-	PhysicsSystem.add(FloorZp)
-	PhysicsSystem.add(FloorD)
-//Springs
-	var teste = new Physics.String(2, 14,Pcube)
-	PhysicsSystem.addString(teste);
-//Transformations
-	Floor.position.y = -2;
-	FloorXp.position.y = 13;
-	FloorXp.position.z = -15;	
-	FloorZp.position.x = 15;
-	FloorZp.position.y = 13;
-	FloorX.position.x = -15;
-	FloorX.position.y = 13;
-	FloorZ.position.y = 13;
-	FloorZ.position.z = 15;
-	FloorD.position.y = -1;
-	FloorD.position.z = -5;
-	Cube.position.x = -5;
-	Cube.position.y = 4;
-	Cube.position.z = 10;
-	Dcube.position.z = 7;
-	Ccube.position.z=  4;
-	Pcube.position.z=  1;
-	Vcube.position.y = 10;
-	Vcube.position.z= -12;
-	teste.position.y =12;
-
-	Vcube.rotation.x = 2;
-	Vcube.rotation.z = 2;
-	Vcube.rotation.y = 2;
-//Initialization
-	var dt = time.getDelta();
-	Controls._target = Vcube.position;
-	renderer.shadowMapEnabled = true;
-	//Vcube.Collision.setMass(5.1);
-	Cube.Collision.setMass(10.1);
-	var Players = [];
-  var Player = new Character(Vcube)
- 
-
+	PhysicsSystem.addString(teste)
 //QuadTree
 	var Tree = new QuadTree(1)
 	Tree.addMobile(PhysicsSystem.Objects)
@@ -1042,76 +831,98 @@ online = typeof(io) !== 'undefined'
 		}
 	}	
 //Socket
-if(online) {
-var socket = io();
+	if(online) {
+	var socket = io();
+	
+	$('#textform').submit(function(){
+		socket.emit('chat message', $('#m').val());
+		return false;
+	});
 
-$('#textform').submit(function(){
-	socket.emit('chat message', $('#m').val());
-	return false;
-});
+	socket.on('chat message', function(msg){
+		$('#messages').append($('<li>').text(msg));
+	});
+	
+	socket.on('newPlayer', function(players) {
+		addNewPlayer(players,0)
+	})
 
-socket.on('chat message', function(msg){
-	$('#messages').append($('<li>').text(msg));
-});
- 
-socket.on('newPlayer', function(players) {
-	addNewPlayer(players,0)
-})
+	socket.on('joinedRoom', function(players) {
+		Player.id = socket.id;
+		Players['/#' + socket.id] =Player;
+		PlayerAmount++;
+		for(var z = 0; z < players.length; z+=5) {
+			addNewPlayer(players,z)
+		}
+	})
 
-socket.on('joinedRoom', function(players) {
-	Player.id = socket.id;
-	Players['/#' + socket.id] =Player;
-
-	for(var z = 0; z < players.length; z+=5) {
-		addNewPlayer(players,z)
+	function addNewPlayer(players,z) {
+		PlayerAmount++;
+		var tempC = new Physics.Sphere(1,1,true);
+		var tempM = new Actor(Sphere3,shaderMat,tempC);
+		tempM.castShadow = true;
+		tempM.receiveShadow = true;
+		tempM.position.copy(players[z+1])
+		tempM.quaternion._x = players[z+2]._x;
+		tempM.quaternion._y = players[z+2]._y;
+		tempM.quaternion._z = players[z+2]._z;
+		tempM.quaternion._w = players[z+2]._w;
+		tempM.Collision.velocity.copy(players[z+3])
+		tempM.Collision.rotVelocity.copy(players[z+4])
+		scene.add(tempM);
+		PhysicsSystem.add(tempM)
+		var tempPlayer = new Character(tempM);
+		tempPlayer.id = players[z]
+		Players[tempPlayer.id] = tempPlayer;
+		console.log("Added player ",tempPlayer )
 	}
-})
 
-function addNewPlayer(players,z) {
-	var tempC = new Physics.Sphere(1,1,true);
-	var tempM = new Actor(Sphere3,shaderMat,tempC);
-	tempM.castShadow = true;
-	tempM.receiveShadow = true;
-	tempM.position.copy(players[z+1])
-	tempM.quaternion._x = players[z+2]._x;
-	tempM.quaternion._y = players[z+2]._y;
-	tempM.quaternion._z = players[z+2]._z;
-	tempM.quaternion._w = players[z+2]._w;
-	tempM.Collision.velocity.copy(players[z+3])
-	tempM.Collision.rotVelocity.copy(players[z+4])
-	scene.add(tempM);
-	PhysicsSystem.add(tempM)
-	var tempPlayer = new Character(tempM);
-	tempPlayer.id = players[z]
-	Players[tempPlayer.id] = tempPlayer;
-	console.log("Added player ",tempPlayer )
-}
+	socket.on('serversend',function(players) {
+		var z = 0;
+		while(typeof(players[z])== 'string') {
+			Players[players[z]].object.position.copy(players[z+1])
+			Players[players[z]].object.quaternion._x = players[z+2]._x;
+			Players[players[z]].object.quaternion._y = players[z+2]._y;
+			Players[players[z]].object.quaternion._z = players[z+2]._z;
+			Players[players[z]].object.quaternion._w = players[z+2]._w;
+			Players[players[z]].object.Collision.velocity.copy(players[z+3])
+			Players[players[z]].object.Collision.rotVelocity.copy(players[z+4])
+			z+=5;
+		}
 
- socket.on('serversend',function(players) {
-	for(var z = 0; z < players.length; z+=5) {	
-		Players[players[z]].object.position.copy(players[z+1])
-		Players[players[z]].object.quaternion._x = players[z+2]._x;
-		Players[players[z]].object.quaternion._y = players[z+2]._y;
-		Players[players[z]].object.quaternion._z = players[z+2]._z;
-		Players[players[z]].object.quaternion._w = players[z+2]._w;
-		Players[players[z]].object.Collision.velocity.copy(players[z+3])
-		Players[players[z]].object.Collision.rotVelocity.copy(players[z+4])
+		var k = 0;
+		//console.log(players)
+		while(z < players.length) {
+			PhysicsSystem.Objects[k].position.copy(players[z]) 
+			PhysicsSystem.Objects[k].quaternion._x = players[z+1]._x; 
+			PhysicsSystem.Objects[k].quaternion._y = players[z+1]._y; 
+			PhysicsSystem.Objects[k].quaternion._z = players[z+1]._z; 
+			PhysicsSystem.Objects[k].quaternion._w = players[z+1]._w; 
+			PhysicsSystem.Objects[k].Collision.velocity.copy(players[z+2])
+			PhysicsSystem.Objects[k].Collision.rotVelocity.copy(players[z+3])
+			k++;
+			z+=4;
+		}
+	});
+
+	socket.emit('join', 1);
+	
+	function Senddata() {
+		var data = {};
+		data.position = Player.object.position;
+		data.quaternion = Player.object.quaternion;
+		data.pVelocity = Player.object.Collision.velocity;
+		data.rVelocity = Player.object.Collision.rotVelocity;
+		socket.emit("clientsend", data);
 	}
-});
+	}//ONLINE_ONLY
 
-socket.emit('join', 1);
+
+
  
-function Senddata() {
-	var data = {};
-	data.position = Player.object.position;
-	data.quaternion = Player.object.quaternion;
-	data.pVelocity = Player.object.Collision.velocity;
-	data.rVelocity = Player.object.Collision.rotVelocity;
-    socket.emit("clientsend", data);
-}
-}
- var aaa = 0;
+
 //RenderFunction
+console.log(renderer)
 	function render () {
 		aaa++;
 		shaderMat.uniforms.time.value = Math.sin(time.elapsedTime*3)*0.5
@@ -1132,7 +943,7 @@ function Senddata() {
 		line.geometry.vertices[0].copy(teste.end.position.clone())
 		line.geometry.vertices[1].copy(teste.position.clone())
 		line.geometry.verticesNeedUpdate = true;
-		PhysicsSystem.update();
+		PhysicsSystem.update(dt);
 		Controls.update(controls);
 		if(online) {
 			Senddata();
@@ -1142,9 +953,5 @@ function Senddata() {
 	}
 	
 render();
-
-
-
-
 </script>
 </html>
