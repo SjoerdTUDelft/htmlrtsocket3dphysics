@@ -543,6 +543,8 @@ online = typeof(io) !== 'undefined'
 	stats3.domElement.style.top = '0px';
 	stats3.domElement.style.left = '160px';
 	document.body.appendChild( stats3.domElement );
+//LOAD MAP
+	var TESTMAPOBJECTS = TESTMAP(scene);
 //GUI
 	var time = new THREE.Clock(true);
 	var spin = true;
@@ -569,7 +571,6 @@ online = typeof(io) !== 'undefined'
 	  });
 	  gui.add(text, 'Refract', 0.7, 1.3).onChange(function() {
 	  	shaderMat.uniforms.refr.value = text.Refract;
-	//  	Dome.scale.y = text.Refract;
 	  });
 	  gui.add(text, 'explode');
 //Controls
@@ -588,23 +589,14 @@ online = typeof(io) !== 'undefined'
 	}	
 	Controls = new ThirdPersonControls(camera);
 	Controls.update(controls);
-
-	var shaderMat = new THREE.ShaderMaterial({
-		uniforms: {
-			time: { type: "f", value: 1.0 },
-			roughness: { type: "f", value: 0.8 },
-			light: { type: "v3", value: new THREE.Vector3(1,0,0)},
-			size: { type : "f", value: 10.0},
-			diffuse : { type: "t", value: GenjiDiffuse},
-			refr : {type: "f", value: 1.0},
-			envMap : {type: "t", value: Environment}
-		},
-
-		vertexShader:   document.getElementById( 'vertexShader' ).textContent,
-		fragmentShader: document.getElementById( 'fragmentShader' ).textContent
-	})
-	var Sphere3 = new THREE.SphereGeometry(1,20,20);
+//Initialization
 	var PhysicsSystem = new Physics();
+	for(var z in TESTMAPOBJECTS.physics) {
+		scene.add(TESTMAPOBJECTS.physics[z])
+		PhysicsSystem.add(TESTMAPOBJECTS.physics[z])
+	}
+
+	var Sphere3 = new THREE.SphereGeometry(1,20,20);
 	var testd = new Physics.Sphere(1,1,true);
 	var Vcube = new Actor(Sphere3,shaderMat,testd);
 	Vcube.castShadow = true;
@@ -618,34 +610,29 @@ online = typeof(io) !== 'undefined'
 	PhysicsSystem.add(Vcube);
 	Controls._target = Vcube.position;
 	var Players = [];
+	var PlayerAmount = 0;
   	var Player = new Character(Vcube)
 
-//Adding to System
-	scene.add(Cube)
-	scene.add(Dcube);
-	scene.add(Pcube);
-	scene.add(Ccube);
-	scene.add(Floor)
-	scene.add(FloorX)
-	scene.add(FloorZ)
-	scene.add(FloorXp)
-	scene.add(FloorZp)
-	scene.add(FloorD)
+	
 
-	PhysicsSystem.add(Cube)
-	PhysicsSystem.add(Pcube);
-	PhysicsSystem.add(Ccube);
-	PhysicsSystem.add(Dcube);
-	PhysicsSystem.add(Floor);
-	PhysicsSystem.add(FloorX)
-	PhysicsSystem.add(FloorZ)
-	PhysicsSystem.add(FloorXp)
-	PhysicsSystem.add(FloorZp)
-	PhysicsSystem.add(FloorD)
 
-//Initialization
 	var dt = time.getDelta();
+	var aaa = 0;
+	var Sphere2 = new THREE.SphereGeometry(.3,20,20);
+    var Light = new THREE.Mesh(Sphere2,shaderMat)
+	scene.add(Light);
 
+	var geometry = new THREE.Geometry();
+	geometry.vertices.push(
+		new THREE.Vector3( -10, 0, 0 ),
+		new THREE.Vector3( 10, 0, 0 )
+	);
+
+	var teste = TESTMAPOBJECTS.strings[0]
+	var mtBlueLine = new THREE.LineBasicMaterial({color: 0x0000ff, side: THREE.DoubleSide,linewidth: 15});
+	var line = new THREE.Line( geometry, mtBlueLine );
+	scene.add( line )	
+	PhysicsSystem.addString(teste)
 //QuadTree
 	var Tree = new QuadTree(1)
 	Tree.addMobile(PhysicsSystem.Objects)
@@ -846,7 +833,7 @@ online = typeof(io) !== 'undefined'
 //Socket
 	if(online) {
 	var socket = io();
-
+	
 	$('#textform').submit(function(){
 		socket.emit('chat message', $('#m').val());
 		return false;
@@ -863,13 +850,14 @@ online = typeof(io) !== 'undefined'
 	socket.on('joinedRoom', function(players) {
 		Player.id = socket.id;
 		Players['/#' + socket.id] =Player;
-
+		PlayerAmount++;
 		for(var z = 0; z < players.length; z+=5) {
 			addNewPlayer(players,z)
 		}
 	})
 
 	function addNewPlayer(players,z) {
+		PlayerAmount++;
 		var tempC = new Physics.Sphere(1,1,true);
 		var tempM = new Actor(Sphere3,shaderMat,tempC);
 		tempM.castShadow = true;
@@ -890,7 +878,8 @@ online = typeof(io) !== 'undefined'
 	}
 
 	socket.on('serversend',function(players) {
-		for(var z = 0; z < players.length; z+=5) {	
+		var z = 0;
+		while(typeof(players[z])== 'string') {
 			Players[players[z]].object.position.copy(players[z+1])
 			Players[players[z]].object.quaternion._x = players[z+2]._x;
 			Players[players[z]].object.quaternion._y = players[z+2]._y;
@@ -898,6 +887,21 @@ online = typeof(io) !== 'undefined'
 			Players[players[z]].object.quaternion._w = players[z+2]._w;
 			Players[players[z]].object.Collision.velocity.copy(players[z+3])
 			Players[players[z]].object.Collision.rotVelocity.copy(players[z+4])
+			z+=5;
+		}
+
+		var k = 0;
+		//console.log(players)
+		while(z < players.length) {
+			PhysicsSystem.Objects[k].position.copy(players[z]) 
+			PhysicsSystem.Objects[k].quaternion._x = players[z+1]._x; 
+			PhysicsSystem.Objects[k].quaternion._y = players[z+1]._y; 
+			PhysicsSystem.Objects[k].quaternion._z = players[z+1]._z; 
+			PhysicsSystem.Objects[k].quaternion._w = players[z+1]._w; 
+			PhysicsSystem.Objects[k].Collision.velocity.copy(players[z+2])
+			PhysicsSystem.Objects[k].Collision.rotVelocity.copy(players[z+3])
+			k++;
+			z+=4;
 		}
 	});
 
@@ -913,8 +917,12 @@ online = typeof(io) !== 'undefined'
 	}
 	}//ONLINE_ONLY
 
-var aaa = 0;
+
+
+ 
+
 //RenderFunction
+console.log(renderer)
 	function render () {
 		aaa++;
 		shaderMat.uniforms.time.value = Math.sin(time.elapsedTime*3)*0.5
@@ -935,7 +943,7 @@ var aaa = 0;
 		line.geometry.vertices[0].copy(teste.end.position.clone())
 		line.geometry.vertices[1].copy(teste.position.clone())
 		line.geometry.verticesNeedUpdate = true;
-		PhysicsSystem.update();
+		PhysicsSystem.update(dt);
 		Controls.update(controls);
 		if(online) {
 			Senddata();

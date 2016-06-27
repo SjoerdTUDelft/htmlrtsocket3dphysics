@@ -22,9 +22,9 @@ Physics.prototype = {
 	addString : function(PhysicsString) {
 		this.Strings.push(PhysicsString)
 	},
-	update : function() {	
+	update : function(dt) {	
 		this.UpdateSprings();
-		this.ApplyForces();
+		this.ApplyForces(dt);
 
 		this.CheckCollisions();
 		this.PrepareContacts();
@@ -133,7 +133,7 @@ Physics.prototype = {
 			}
 		}
 	},
-	ApplyForces : function() {
+	ApplyForces : function(dt) {
 		for(var i = 0; i < this.Objects.length; i ++ ) {
 			if(this.Objects[i].Collision.isAwake == false) continue;
 			
@@ -156,7 +156,7 @@ Physics.prototype = {
 				l.multiplyScalar(len*len*this.Objects[i].Collision.angdampfac*dt) 
 				this.Objects[i].Collision.rotVelocity.sub(l)
 
-				this.Objects[i].Collision.updateRotation(this.Objects[i].Collision.rotVelocity)
+				this.Objects[i].Collision.updateRotation(this.Objects[i].Collision.rotVelocity,dt)
 
 				len = this.Objects[i].Collision.rotVelocity.length() 
 				l = this.Objects[i].Collision.rotVelocity.clone()

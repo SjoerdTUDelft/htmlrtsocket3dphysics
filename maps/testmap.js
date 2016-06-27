@@ -1,24 +1,11 @@
 
-if( 'undefined' != typeof global ) {
-    module.exports = TESTMAP;
-}  else {
-    newLevel = function(Lights,Object,Physics,Springs) {
-        this.lights = Lights;
-        this.object = Object;
-        this.physics = Physics;
-        this.spring = Springs;
-    }
-}
 
-TESTMAP = function() {
+TESTMAP = function(Scene) {
 
 if( 'undefined' == typeof global ) {
-var Lights = []
-var SceneObjects = []
-
 
 //Lights
-	Lights.push( new THREE.HemisphereLight( 0x443333, 0x111122 ) );
+	Scene.add( new THREE.HemisphereLight( 0x443333, 0x111122 ) );
 	//---------------------------------------------
     var spotLight = new THREE.SpotLight( 0xffffbb, .9 );
 	spotLight.position.set( 0.5, 0.7, 1 );
@@ -30,7 +17,7 @@ var SceneObjects = []
 	spotLight.shadowCameraFar =  90;
 	spotLight.shadowCameraFov = 40;
 	spotLight.shadowBias = -0.001
-	Lights.push( spotLight );
+	Scene.add( spotLight );
 
 //Textures
 	var Environment = THREE.ImageUtils.loadTexture( "environment/HighRes.jpg");
@@ -39,7 +26,8 @@ var SceneObjects = []
     var GenjiDiffuse = THREE.ImageUtils.loadTexture( "obj/textures/Tex_2407_0.png" )
 
 //Materials
-	var shaderMat = new THREE.ShaderMaterial({
+
+	shaderMat = new THREE.ShaderMaterial({
 		uniforms: {
 			time: { type: "f", value: 1.0 },
 			roughness: { type: "f", value: 0.8 },
@@ -54,7 +42,7 @@ var SceneObjects = []
 		fragmentShader: document.getElementById( 'fragmentShader' ).textContent
 	})
     //---------------------------------------------
-	var shaderMat2 = new THREE.ShaderMaterial({
+	shaderMat2 = new THREE.ShaderMaterial({
 		uniforms: {
 			time: { type: "f", value: 1.0 },
 			roughness: { type: "f", value: 0.8 },
@@ -70,7 +58,6 @@ var SceneObjects = []
 	var materialWall = new THREE.MeshPhongMaterial( { color: 0xffffff} );
 	var red = new THREE.MeshBasicMaterial( { color: 0xff0000  , wireframe:true, side: THREE.DoubleSide} );
 	var blue = new THREE.MeshBasicMaterial( { color: 0x0000ff  , wireframe:true, side: THREE.DoubleSide} );
-	var materiala = new THREE.LineBasicMaterial({color: 0x0000ff, side: THREE.DoubleSide,linewidth: 15});
 	var domeMat = new THREE.MeshBasicMaterial( { map: Environment,side: THREE.DoubleSide});
 
 
@@ -99,8 +86,8 @@ var SceneObjects = []
 					object2.material = shaderMat2;
 				}
 			})
-			SceneObjects.push( object );
-			SceneObjects.push(object2);
+			Scene.add( object );
+			Scene.add(object2);
 		},
 		onProgress = function ( xhr ) {
 			if ( xhr.lengthComputable ) {
@@ -119,26 +106,17 @@ var SceneObjects = []
    	var boxgeo= new THREE.BoxGeometry(2,2,2);
 	var planefgeo= new THREE.PlaneGeometry(30,30,1,1);
 	var Sphere3 = new THREE.SphereGeometry(1,20,20);
-	var Sphere2 = new THREE.SphereGeometry(.3,20,20);
 	var Spheresmall = new THREE.SphereGeometry(.2,12,12);
 	var domeGeo = new THREE.SphereGeometry( 5000, 60, 40 );
-	var geometry = new THREE.Geometry();
-	geometry.vertices.push(
-		new THREE.Vector3( -10, 0, 0 ),
-		new THREE.Vector3( 10, 0, 0 )
-	);
+
 
  //Meshes
-    var Light = new THREE.Mesh(Sphere2,red)
-	SceneObjects.push(Light);
 
-	var line = new THREE.Line( geometry, materiala );
-	SceneObjects.push( line )	
 
 	var Dome = new THREE.Mesh(domeGeo,domeMat);
 	Dome.scale.x = -1;
 	Dome.rotation.y = Math.PI;
-    SceneObjects.push(Dome);
+    Scene.add(Dome);
 
 } //CLIENTONLY
 
@@ -148,14 +126,10 @@ var SceneObjects = []
 	var testa = new Physics.Sphere(1,1,true);
 	var testb = new Physics.Sphere(1,1,true);
 	var testc = new Physics.Sphere(1,1,true);
-
 	var testcube = new Physics.Box(1,true,1,1,1)
 
-    //Springs
-	var teste = new Physics.String(2, 14,Pcube)
-    var Springs =[]
-	Springs.push(teste);
 
+ 
     //Half-spaces
 	var phFloor = new Physics.Dimension()
 	var phXFloor = new Physics.Dimension()
@@ -176,7 +150,7 @@ var SceneObjects = []
         var FloorX = new Actor(planefgeo,materialWall,phXFloor)
         var FloorZ = new Actor(planefgeo,materialWall,phZFloor)
         var FloorD = new Actor(planefgeo,materialWall,phDpFloor)
-        
+ 
         Pcube.castShadow = true;
         Ccube.castShadow = true;
         Dcube.castShadow = true;
@@ -210,6 +184,10 @@ var SceneObjects = []
     Cube.Collision.setMass(10.1);  
     PhysicsObjects = [Pcube,Ccube,Dcube,Cube,Floor,FloorXp,FloorZp,FloorX,FloorZ,FloorD]
 
+    //Strings
+    var Strings =[]
+	var teste = new Physics.String(2, 14,Pcube)
+	Strings.push(teste);
 
 //Transformations
    	Floor.rotation.set( -Math.PI * 0.5,0,0)
@@ -243,11 +221,18 @@ var SceneObjects = []
 	Pcube.position.z=  1;
 	teste.position.y =12;
 
-
     if( 'undefined' == typeof global ) {
-        return new newLevel(Lights,SceneObjects,PhysicsObjects,Springs)
+        return new newLevel(PhysicsObjects,Strings)
     } else {
         return PhysicsObjects;
     }
 }
 
+if( 'undefined' != typeof global ) {
+    module.exports = TESTMAP;
+}  else {
+    newLevel = function(Physics,Strings) {
+        this.physics = Physics;
+        this.strings = Strings;
+    }
+}

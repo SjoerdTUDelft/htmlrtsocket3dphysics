@@ -49,7 +49,7 @@ Physics.Object.prototype = {
 	
 	},
 	
-	updateRotation : function(vector) {
+	updateRotation : function(vector,dt) {
 		if(!(vector instanceof THREE.Vector3))debugger;
 		var z = new THREE.Quaternion(vector.x*dt,vector.y*dt,vector.z*dt,0)
 		z.multiplyQuaternions(z,this.parent.quaternion);
@@ -61,7 +61,7 @@ Physics.Object.prototype = {
 
 	updateData : function() {
 		this.parent.quaternion.normalize();
-		this.parent.updateMatrixWorld(true);
+		//this.parent.updateMatrixWorld(true);
 		this.updateWorldInertiaTensor();
 	},
 

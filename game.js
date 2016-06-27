@@ -1,4 +1,4 @@
- /// <reference path="typings/globals/express-serve-static-core/index.d.ts" />
+/// <reference path="typings/globals/express-serve-static-core/index.d.ts" />
 /// <reference path="typings/globals/express/index.d.ts" />
 /// <reference path="typings/globals/node/index.d.ts" />
 /// <reference path="typings/globals/serve-static/index.d.ts" />
@@ -10,7 +10,7 @@ var Players = [];
 var PlayerAmount = 0;
 
 var oldTime = new Date().getTime();
-var deltaTime = new Date().getTime();
+var dt = new Date().getTime();
 
 
    var 
@@ -23,16 +23,20 @@ var app = require('express')();
 var httptemp = require('http');
 var http = httptemp.Server(app);
 var io = require('socket.io')(http);
+
 THREE = require('three');
 require('./js/Math/Matrix3ext')
-var Physics = new require('./js/Physics/PhysicsSystem')
+Physics =  require('./js/Physics/PhysicsSystem')
 require('./js/Actor');
- 
-console.log(Object);
- Physics();
 
-var testa = new Physics.Sphere(1,1,true);
+var TestSystem = new Physics();
 
+var Objects = require('./maps/testmap')();
+var PhysicsObjects= Objects.length();
+
+for(var k in Objects) {
+	TestSystem.add(Objects[k]);
+}
 
 
 
@@ -130,10 +134,12 @@ io.on('connection', function(socket){
 
 function StartTime() {
 	setInterval(function(){
-		deltaTime = new Date().getTime() - oldTime;
+		dt = new Date().getTime() - oldTime;
 		oldTime = new Date().getTime();
+		TestSystem.update(dt);
 		sendToClient();
-	}, 30);
+		//console.log(dt)
+	}, 60);
 }
 
 function sendToClient() {
@@ -145,7 +151,13 @@ function sendToClient() {
 		data.push(Players[z].velocity);
 		data.push(Players[z].rotVelocity);
 	}
- 
+ 	for(var k in TestSystem.Objects) {
+		 data.push(TestSystem.Objects[k].position) 
+		 data.push(TestSystem.Objects[k].quaternion) 
+		 data.push(TestSystem.Objects[k].Collision.velocity)
+		 data.push(TestSystem.Objects[k].Collision.rotVelocity) 		  		 		 
+	}
+
 	io.to(1).emit("serversend", data);
 }
 
@@ -161,7 +173,7 @@ Player = function(sock) {
 function addplayer(sock) {
 	
 	Players[sock.id] = new Player(sock);
-	Players[sock.id].position = new THREE.Vector3(2*PlayerAmount-2,0,0);
+	Players[sock.id].position = new THREE.Vector3(2*PlayerAmount-2,16,0);
 	PlayerAmount++;
 	console.log(PlayerAmount)
 }

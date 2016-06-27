@@ -1,7 +1,6 @@
 Actor = function(geometry,material,physObj) {
 	if( 'undefined' != typeof global ) {
-	this.position = new THREE.Vector3();
-	this.quaternion = new THREE.Quaternion();
+	THREE.Object3D.call( this );
 	} else {
 	THREE.Mesh.call( this,geometry,material );
 	}
@@ -11,6 +10,7 @@ Actor = function(geometry,material,physObj) {
 }
 
 if( 'undefined' != typeof global ) {
+	Actor.prototype = Object.create( THREE.Object3D.prototype );
     module.exports = Actor;
 } else {
 	Actor.prototype = Object.create( THREE.Mesh.prototype );
