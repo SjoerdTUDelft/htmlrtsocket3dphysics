@@ -32,7 +32,7 @@ require('./js/Actor');
 var TestSystem = new Physics();
 
 var Objects = require('./maps/testmap')();
-var PhysicsObjects= Objects.length();
+var PhysicsObjects= Objects.length;
 
 for(var k in Objects) {
 	TestSystem.add(Objects[k]);
